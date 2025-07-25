@@ -24,6 +24,15 @@ if shutil.which("ffmpeg") is None:
     exit(1)
 
 
+# 清理文件名中的非法字符
+def sanitize_filename(filename):
+    illegal_chars = '<>:"/\\|?*'
+    # 将非法字符替换为下划线
+    for char in illegal_chars:
+        filename = filename.replace(char, '_')
+    return filename
+
+
 # 获取订阅列表
 def get_subscription_list():
     resp = requests.get(cfg["base_url"], headers=HEADERS)
@@ -103,9 +112,9 @@ def download_and_merge(m3u8_url, target_dir, output_name):
     if any(l.startswith("#EXT-X-STREAM-INF") for l in lines):
         for i, l in enumerate(lines):
             if l.startswith("#EXT-X-STREAM-INF"):
-                sub = lines[i + 1]
+                sub_1 = lines[i + 1]
                 base = m3u8_url.rsplit("/", 1)[0] + "/"
-                sub_url = sub if sub.startswith("http") else urljoin(base, sub)
+                sub_url = sub_1 if sub_1.startswith("http") else urljoin(base, sub_1)
                 return download_and_merge(sub_url, target_dir, output_name)
 
     # 解析 TS 列表
@@ -126,48 +135,60 @@ def download_and_merge(m3u8_url, target_dir, output_name):
             list_f.write(f"file '{ts_name}'\n")
             print(f"[下载 TS] {ts_name}")
 
-    # 合并 TS
+    # 合并 TS - 修改 FFmpeg 命令以确保音频轨道正确处理
     output_path = os.path.join(target_dir, output_name)
-    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", filelist_path, "-c", "copy", output_path]
+    # 使用更通用的编码选项确保音频轨道被正确处理
+    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
+           "-c", "copy", "-ignore_unknown", "-fflags", "+genpts", output_path]
     try:
         subprocess.run(cmd, check=True)
     except FileNotFoundError:
         print("错误：无法执行 ffmpeg。请确保 ffmpeg 已正确安装并在 PATH 中。")
         exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"警告：FFmpeg 合并失败，尝试使用重新编码方式: {e}")
+        # 如果直接复制失败，尝试重新编码
+        cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
+               "-c:v", "libx264", "-c:a", "aac", "-ignore_unknown", "-fflags", "+genpts", output_path]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"错误：FFmpeg 重新编码也失败了: {e}")
+            raise
     print(f"[合并完成] {output_path}")
 
     # 清理中间文件
-    for fname in os.listdir(target_dir):
-        if fname.endswith(".ts") or fname.endswith(".m3u8") or fname == "filelist.txt":
-            os.remove(os.path.join(target_dir, fname))
+    for filename in os.listdir(target_dir):
+        if filename.endswith(".ts") or filename.endswith(".m3u8") or filename == "filelist.txt":
+            os.remove(os.path.join(target_dir, filename))
     print(f"[清理] 中间文件已删除")
+    return None
 
 
-# 主流程
 if __name__ == "__main__":
     subs_resp = get_subscription_list()
-    subs = parse_subscription_list(subs_resp)
+    subs_1 = parse_subscription_list(subs_resp)
 
-    for sub in subs:
+    for sub in subs_1:
         info = get_user_info_by_code(sub["user_code"])
         user_dir = os.path.join(cfg["download_dir"], info["user_code"])
-        page = 1
+        page_1 = 1
         while True:
-            timeline = get_timeline(info["user_id"], page=page)
-            for post in timeline:
-                m3u8 = extract_m3u8_url(post)
+            timeline = get_timeline(info["user_id"], page=page_1)
+            for post_1 in timeline:
+                m3u8 = extract_m3u8_url(post_1)
                 if not m3u8:
                     continue
-                ym = post["month"]  # e.g. "2025-06"
-                pid = post["post_id"]
-                title = post["title"]
-                target = os.path.join(user_dir, ym, str(title))
-                out_name = f"{title}.mp4"
-                print(f"\n== 开始下载 {info['user_code']} {ym} {title} ==")
+                ym = post_1["month"]  # e.g. "2025-06"
+                pid = post_1["post_id"]
+                title = sanitize_filename(post_1["title"])  # 清理标题中的非法字符
+                target = os.path.join(str(user_dir), ym, str(title))
+                out_name = f"{title}_{pid}.mp4"
+                print(f"\n== 开始下载 {info['user_code']} {ym} {title} ({pid}) ==")
                 if os.path.exists(os.path.join(target, out_name)):
                     print(f"[跳过] {out_name} 已存在")
                     continue
                 download_and_merge(m3u8, target, out_name)
-            page += 1
-            if len(timeline) < cfg["record"]:
+            page_1 += 1
+            if len(timeline) < 12:
                 break
