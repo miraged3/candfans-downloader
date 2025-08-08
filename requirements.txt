@@ -1,2 +1,4 @@
 pyyaml
 requests
+tqdm
+urllib3

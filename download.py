@@ -1,9 +1,16 @@
+import copy
 import os
-import yaml
-import requests
-import subprocess
+import re
 import shutil
+import subprocess
+from pathlib import Path
 from urllib.parse import urljoin
+
+import requests
+import yaml
+from requests.adapters import HTTPAdapter
+from tqdm import tqdm
+from urllib3 import Retry
 
 
 # 加载配置文件
@@ -12,11 +19,78 @@ def load_config(path="config.yaml"):
         return yaml.safe_load(f)
 
 
-cfg = load_config()
+try:
+    cfg = load_config()
+except FileNotFoundError:
+    print("错误：未找到 config.yaml")
+    exit(1)
+except yaml.YAMLError as e:
+    print(f"配置文件格式错误: {e}")
+    exit(1)
+
+
+# 替换原有 import pkg_resources 为以下内容
+from importlib import metadata
+import sys
+
+def check_requirements(req_file="requirements.txt"):
+    req_path = Path(req_file)
+    if not req_path.exists():
+        print(f"警告：未找到 {req_file}，跳过依赖检查")
+        return True
+
+    with open(req_path, encoding="utf-8") as f:
+        requirements = [r.strip() for r in f.read().splitlines() if r.strip() and not r.startswith("#")]
+
+    missing_packages = []
+    for req in requirements:
+        try:
+            # 解析包名和版本要求（如 package>=1.0）
+            if ">=" in req:
+                pkg_name, version_required = req.split(">=", 1)
+                installed_version = metadata.version(pkg_name)
+                if installed_version < version_required:
+                    raise metadata.PackageNotFoundError
+            elif "==" in req:
+                pkg_name, version_required = req.split("==", 1)
+                installed_version = metadata.version(pkg_name)
+                if installed_version != version_required:
+                    raise metadata.PackageNotFoundError
+            else:
+                # 只检查是否安装
+                metadata.version(req)
+        except metadata.PackageNotFoundError:
+            missing_packages.append(req)
+
+    if missing_packages:
+        print("缺少依赖或版本不匹配：")
+        for pkg in missing_packages:
+            print(f"  - {pkg}")
+        return False
+    return True
+
+
 
 # 公共 headers（含 Cookie 和 x-xsrf-token）
-HEADERS = cfg["headers"].copy()
+HEADERS = copy.deepcopy(cfg["headers"])
 HEADERS["Cookie"] = cfg["cookie"]
+
+session = requests.Session()
+retry_strategy = Retry(
+    total=5,  # 总重试次数
+    backoff_factor=1,  # 重试延迟递增 (1s, 2s, 4s...)
+    status_forcelist=[500, 502, 503, 504],
+    allowed_methods=["HEAD", "GET", "OPTIONS"],
+    raise_on_status=False
+)
+adapter = HTTPAdapter(max_retries=retry_strategy)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
+
+
+def safe_get(url_1, **kwargs):
+    return session.get(url_1, timeout=10, **kwargs)
+
 
 # 入口前检查依赖
 if shutil.which("ffmpeg") is None:
@@ -26,16 +100,12 @@ if shutil.which("ffmpeg") is None:
 
 # 清理文件名中的非法字符
 def sanitize_filename(filename):
-    illegal_chars = '<>:"/\\|?*'
-    # 将非法字符替换为下划线
-    for char in illegal_chars:
-        filename = filename.replace(char, '_')
-    return filename
+    return re.sub(r'[<>:"/\\|?*]', '_', filename).strip()
 
 
 # 获取订阅列表
 def get_subscription_list():
-    resp = requests.get(cfg["base_url"], headers=HEADERS)
+    resp = safe_get(cfg["base_url"], headers=HEADERS)
     resp.raise_for_status()
     return resp.json()
 
@@ -55,7 +125,7 @@ def parse_subscription_list(resp_json):
 
 # 根据 user_code 获取用户信息
 def get_user_info_by_code(user_code):
-    resp = requests.get(cfg["get_users_url"], headers=HEADERS, params={"user_code": user_code})
+    resp = safe_get(cfg["get_users_url"], headers=HEADERS, params={"user_code": user_code})
     resp.raise_for_status()
     data = resp.json()
     user = data["data"]["user"]
@@ -75,19 +145,10 @@ def get_timeline(user_id, page=1, record=12):
         "page": page,
         "post_type[0]": 1,
     }
-    resp = requests.get(cfg["get_timeline_url"], headers=HEADERS, params=params)
+    resp = safe_get(cfg["get_timeline_url"], headers=HEADERS, params=params)
     resp.raise_for_status()
     data = resp.json()
     return data.get("data", [])
-
-
-# 提取 m3u8 URL
-def extract_m3u8_url(post):
-    for att in post.get("attachments", []):
-        url = att.get("default")
-        if url and url.endswith(".m3u8"):
-            return url
-    return None
 
 
 # 创建目录
@@ -96,14 +157,31 @@ def ensure_dir(path):
 
 
 # 下载并合并函数
-def download_and_merge(m3u8_url, target_dir, output_name):
+def download_and_merge(file_url, target_dir, output_name, url_type='m3u8'):
     ensure_dir(target_dir)
 
+    # 如果是mp4文件，直接下载
+    if url_type == 'mp4':
+        output_path = os.path.join(target_dir, output_name)
+        print(f"[下载 MP4] {output_path}")
+        resp = safe_get(file_url, headers=HEADERS, stream=True)
+        resp.raise_for_status()
+        total_size = int(resp.headers.get("content-length", 0))
+        with open(output_path, "wb") as f, tqdm(
+                total=total_size, unit='B', unit_scale=True, desc=output_name
+        ) as pbar:
+            for chunk in resp.iter_content(1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    pbar.update(len(chunk))
+        print(f"[下载完成] {output_path}")
+        return None
+
     # 下载 m3u8 文本
-    r = requests.get(m3u8_url, headers=HEADERS)
+    r = safe_get(file_url, headers=HEADERS)
     r.raise_for_status()
     m3u8_text = r.text
-    m3u8_filename = os.path.join(target_dir, os.path.basename(m3u8_url))
+    m3u8_filename = os.path.join(target_dir, os.path.basename(file_url))
     with open(m3u8_filename, "w", encoding="utf-8") as f:
         f.write(m3u8_text)
 
@@ -113,27 +191,35 @@ def download_and_merge(m3u8_url, target_dir, output_name):
         for i, l in enumerate(lines):
             if l.startswith("#EXT-X-STREAM-INF"):
                 sub_1 = lines[i + 1]
-                base = m3u8_url.rsplit("/", 1)[0] + "/"
+                base = file_url.rsplit("/", 1)[0] + "/"
                 sub_url = sub_1 if sub_1.startswith("http") else urljoin(base, sub_1)
                 return download_and_merge(sub_url, target_dir, output_name)
 
     # 解析 TS 列表
-    base = m3u8_url.rsplit("/", 1)[0] + "/"
+    base = file_url.rsplit("/", 1)[0] + "/"
     ts_urls = [(l if l.startswith("http") else urljoin(base, l)) for l in lines if not l.startswith("#")]
 
     # 下载 TS 并生成合并列表
     filelist_path = os.path.join(target_dir, "filelist.txt")
     with open(filelist_path, "w", encoding="utf-8") as list_f:
-        for idx, ts in enumerate(ts_urls):
-            ts_name = f"{idx:04d}.ts"
-            ts_path = os.path.join(target_dir, ts_name)
-            resp = requests.get(ts, headers=HEADERS, stream=True)
-            resp.raise_for_status()
-            with open(ts_path, "wb") as ts_f:
-                for chunk in resp.iter_content(1024 * 1024):
-                    ts_f.write(chunk)
-            list_f.write(f"file '{ts_name}'\n")
-            print(f"[下载 TS] {ts_name}")
+        with tqdm(total=len(ts_urls), unit='ts', desc="TS 下载") as pbar:
+            for idx, ts in enumerate(ts_urls):
+                ts_name = f"{idx:04d}.ts"
+                ts_path = os.path.join(target_dir, ts_name)
+                try:
+                    resp = safe_get(ts, headers=HEADERS, stream=True)
+                    resp.raise_for_status()
+                except requests.exceptions.SSLError as e:
+                    print(f"[重试中] TS {idx} SSL 错误: {e}")
+                    resp = safe_get(ts, headers=HEADERS, stream=True)
+                    resp.raise_for_status()
+                resp.raise_for_status()
+                with open(ts_path, "wb") as ts_f:
+                    for chunk in resp.iter_content(1024 * 1024):
+                        if chunk:
+                            ts_f.write(chunk)
+                list_f.write(f"file '{ts_name}'\n")
+                pbar.update(1)
 
     # 合并 TS - 修改 FFmpeg 命令以确保音频轨道正确处理
     output_path = os.path.join(target_dir, output_name)
@@ -166,6 +252,10 @@ def download_and_merge(m3u8_url, target_dir, output_name):
 
 
 if __name__ == "__main__":
+    if not check_requirements():
+        print("\n请先安装缺少的依赖：")
+        print("pip install -r requirements.txt")
+        sys.exit(1)
     subs_resp = get_subscription_list()
     subs_1 = parse_subscription_list(subs_resp)
 
@@ -176,19 +266,28 @@ if __name__ == "__main__":
         while True:
             timeline = get_timeline(info["user_id"], page=page_1)
             for post_1 in timeline:
-                m3u8 = extract_m3u8_url(post_1)
-                if not m3u8:
+                file_type = ''
+                attachments = post_1.get("attachments") or []
+                if not attachments:
                     continue
-                ym = post_1["month"]  # e.g. "2025-06"
+                url = attachments[0].get("default")
+                if url and url.endswith(".m3u8"):
+                    file_type = 'm3u8'
+                elif url and url.endswith(".mp4"):
+                    file_type = 'mp4'
+                else:
+                    print(f"链接：{url} 的格式不被支持！")
+                    continue
                 pid = post_1["post_id"]
-                title = sanitize_filename(post_1["title"])  # 清理标题中的非法字符
+                ym = post_1.get("month", "unknown_month")
+                title = sanitize_filename(post_1.get("title", "untitled"))
                 target = os.path.join(str(user_dir), ym, str(title))
                 out_name = f"{title}_{pid}.mp4"
                 print(f"\n== 开始下载 {info['user_code']} {ym} {title} ({pid}) ==")
                 if os.path.exists(os.path.join(target, out_name)):
                     print(f"[跳过] {out_name} 已存在")
                     continue
-                download_and_merge(m3u8, target, out_name)
+                download_and_merge(url, target, out_name, file_type)
             page_1 += 1
             if len(timeline) < 12:
                 break
