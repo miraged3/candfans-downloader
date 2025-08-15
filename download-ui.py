@@ -15,6 +15,7 @@ import requests
 import yaml
 
 from network import safe_get
+from api import (get_subscription_list, parse_subscription_list, get_user_info_by_code, get_timeline)
 
 from config import (
     HEADERS,
@@ -54,45 +55,6 @@ if ffmpeg_path is None:
 # 清理文件名中的非法字符
 def sanitize_filename(filename):
     return re.sub(r'[<>:"/\\|?*]', '_', filename).strip()
-
-
-# 获取订阅列表
-def get_subscription_list():
-    resp = safe_get(cfg["base_url"], headers=HEADERS)
-    resp.raise_for_status()
-    return resp.json()
-
-
-# 解析订阅列表
-def parse_subscription_list(resp_json):
-    subs = []
-    for item in resp_json.get("data", []):
-        subs.append({"user_code": item["user_code"], "plan_id": item["plan_id"]})
-    return subs
-
-
-# 根据 user_code 获取用户信息
-def get_user_info_by_code(user_code):
-    resp = safe_get(cfg["get_users_url"], headers=HEADERS, params={"user_code": user_code})
-    resp.raise_for_status()
-    data = resp.json()
-    user = data["data"]["user"]
-    return {"user_code": user["user_code"], "username": user["username"], "user_id": user["id"]}
-
-
-# 获取时间线
-def get_timeline(user_id, page=1, record=12):
-    params = {
-        "user_id": user_id,
-        "sort_order": "new",
-        "record": record,
-        "page": page,
-        "post_type[0]": 1,
-    }
-    resp = safe_get(cfg["get_timeline_url"], headers=HEADERS, params=params)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("data", [])
 
 
 # 创建目录
