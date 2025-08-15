@@ -6,9 +6,9 @@ from urllib.parse import urljoin
 
 import requests
 import yaml
-from requests.adapters import HTTPAdapter
 from tqdm import tqdm
-from urllib3 import Retry
+
+from network import safe_get
 
 from config import HEADERS, cfg, check_requirements, load_config
 
@@ -23,22 +23,6 @@ except yaml.YAMLError as e:
     exit(1)
 
 import sys
-
-session = requests.Session()
-retry_strategy = Retry(
-    total=5,  # 总重试次数
-    backoff_factor=1,  # 重试延迟递增 (1s, 2s, 4s...)
-    status_forcelist=[500, 502, 503, 504],
-    allowed_methods=["HEAD", "GET", "OPTIONS"],
-    raise_on_status=False
-)
-adapter = HTTPAdapter(max_retries=retry_strategy)
-session.mount("http://", adapter)
-session.mount("https://", adapter)
-
-
-def safe_get(url_1, **kwargs):
-    return session.get(url_1, timeout=10, **kwargs)
 
 
 # 入口前检查依赖
