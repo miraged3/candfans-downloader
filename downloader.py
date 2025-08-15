@@ -26,7 +26,7 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def _download_ts_segment(ts_url, ts_path, idx, total, log, pause_event, cancel_event):
+def _download_ts_segment(ts_url, ts_path, idx, total, log, pause_event, cancel_event, progress_cb=None):
     def _log(msg):
         if log:
             log(msg)
@@ -57,10 +57,9 @@ def _download_ts_segment(ts_url, ts_path, idx, total, log, pause_event, cancel_e
             if chunk:
                 ts_f.write(chunk)
 
-    if log is None:
-        # 进度条由 tqdm 控制，无需手动输出
-        pass
-    else:
+    if progress_cb:
+        progress_cb(idx + 1, total)
+    if log is not None:
         _log(f"[TS] {idx + 1}/{total}")
 
 
@@ -73,6 +72,7 @@ def download_and_merge(
         pause_event=None,
         cancel_event=None,
         on_ffmpeg=None,
+        progress_cb=None,
 ):
     """Download a video (m3u8/mp4) and merge segments via ffmpeg.
 
@@ -95,6 +95,8 @@ def download_and_merge(
     on_ffmpeg: callable, optional
         Callback receiving the ffmpeg ``Popen`` object. Called with ``None``
         when processing ends.
+    progress_cb: callable, optional
+        Receives ``(current, total)`` to report progress.
     """
 
     def _log(msg):
@@ -126,7 +128,8 @@ def download_and_merge(
         resp.raise_for_status()
         total_size = int(resp.headers.get("content-length", 0)) or None
         with open(output_path, "wb") as f:
-            if log is None:
+            downloaded = 0
+            if progress_cb is None and log is None:
                 with tqdm(total=total_size or 0, unit="B", unit_scale=True, desc=output_name) as pbar:
                     for chunk in resp.iter_content(1024 * 1024):
                         if _should_cancel():
@@ -135,9 +138,9 @@ def download_and_merge(
                         _wait_if_paused()
                         if chunk:
                             f.write(chunk)
+                            downloaded += len(chunk)
                             pbar.update(len(chunk))
             else:
-                downloaded = 0
                 for chunk in resp.iter_content(1024 * 1024):
                     if _should_cancel():
                         _log("[取消] 用户已取消（mp4）。")
@@ -146,8 +149,12 @@ def download_and_merge(
                     if chunk:
                         f.write(chunk)
                         downloaded += len(chunk)
-                        if total_size:
+                        if progress_cb:
+                            progress_cb(downloaded, total_size or 0)
+                        elif total_size and log is not None:
                             _log(f"[进度] {output_name}: {downloaded * 100 // total_size}%")
+            if progress_cb and downloaded and (total_size or 0):
+                progress_cb(downloaded, total_size or downloaded)
         _log(f"[下载完成] {output_path}")
         return None
 
@@ -175,6 +182,7 @@ def download_and_merge(
                     pause_event=pause_event,
                     cancel_event=cancel_event,
                     on_ffmpeg=on_ffmpeg,
+                    progress_cb=progress_cb,
                 )
 
     base = file_url.rsplit("/", 1)[0] + "/"
@@ -187,7 +195,7 @@ def download_and_merge(
     filelist_path = os.path.join(target_dir, "filelist.txt")
     with open(filelist_path, "w", encoding="utf-8") as list_f:
         total = len(ts_urls)
-        if log is None:
+        if progress_cb is None and log is None:
             with tqdm(total=total, unit="ts", desc="TS 下载") as pbar:
                 for idx, ts in enumerate(ts_urls):
                     if _should_cancel():
@@ -205,7 +213,7 @@ def download_and_merge(
 
                 ts_name = f"{idx:04d}.ts"
                 ts_path = os.path.join(target_dir, ts_name)
-                _download_ts_segment(ts, ts_path, idx, total, log, pause_event, cancel_event)
+                _download_ts_segment(ts, ts_path, idx, total, log, pause_event, cancel_event, progress_cb=progress_cb)
                 list_f.write(f"file '{ts_name}'\n")
 
     output_path = os.path.join(target_dir, output_name + ".mp4")
