@@ -1,32 +1,26 @@
-import os
-import threading
+import os.path
 import queue
-
+import threading
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
-from tkinter.scrolledtext import ScrolledText
+from tkinter import ttk, messagebox
 
 from api import (
     get_subscription_list,
     parse_subscription_list,
-    get_user_info_by_code,
-    get_timeline,
+    get_timeline, get_user_info_by_code,
 )
-
 from config import (
     cfg,
     save_config,
 )
-
-from downloader import sanitize_filename, download_and_merge
-
+from downloader import download_and_merge
 from .config_dialog import ConfigDialog
 
 
 class DownloaderGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("CandFans Downloader - GUI")
+        self.title("CandFans Downloader")
         self.geometry("1100x700")
 
         # 数据
@@ -170,10 +164,11 @@ class DownloaderGUI(tk.Tk):
                 subs = parse_subscription_list(subs_resp)
                 accounts = []
                 for user in subs:
+                    info = get_user_info_by_code(user["user_code"])
                     accounts.append({
-                        "username": user["name"],
-                        "user_code": user["code"],
-                        "user_id": user["id"],
+                        "username": info["username"],
+                        "user_code": info["user_code"],
+                        "user_id": info["user_id"],
                     })
                 self.accounts = accounts
                 self._log(f"加载成功，共 {len(accounts)} 个账号")
@@ -213,17 +208,17 @@ class DownloaderGUI(tk.Tk):
                     page = 1
                     while True:
                         tl = get_timeline(acc["user_id"], page=page)
-                        posts.extend(tl["list"])
+                        posts.extend(tl)
                         if max_pages and page >= max_pages:
                             break
-                        if not tl["has_more"]:
+                        if len(tl) < 12:
                             break
                         page += 1
                     self.all_posts_raw[acc["user_code"]] = posts
                     for post in posts:
                         urls = []
-                        for media in post.get("medias", []):
-                            url = media.get("source_url")
+                        for media in post.get("attachments", []):
+                            url = media.get("default")
                             if not url:
                                 continue
                             if filter_type and not url.endswith(filter_type):
@@ -233,7 +228,6 @@ class DownloaderGUI(tk.Tk):
                             continue
                         for url in urls:
                             url_type = "m3u8" if url.endswith(".m3u8") else "mp4"
-                            month = post.get("month") or ""
                             self.posts.append((acc, post, url_type, url))
                 self._log(f"拉取完毕，共 {len(self.posts)} 条")
             except Exception as e:
@@ -268,7 +262,8 @@ class DownloaderGUI(tk.Tk):
             if filter_type and url_type != filter_type:
                 continue
             months.add(post.get("month"))
-            self.tree.insert("", "end", values=(acc["username"], post.get("month"), post.get("title"), url_type, post.get("post_id")))
+            self.tree.insert("", "end", values=(acc["username"], post.get("month"), post.get("title"), url_type,
+                                                post.get("post_id")))
 
         months = sorted(m for m in months if m)
         self.month_combo.config(values=["全部"] + months)
@@ -279,7 +274,7 @@ class DownloaderGUI(tk.Tk):
         self.tree.selection_set(self.tree.get_children())
 
     def clear_selection(self):
-        self.tree.selection_clear(self.tree.get_children())
+        self.tree.selection_clear()
 
     def on_download(self):
         selected_items = self.tree.selection()
@@ -301,6 +296,7 @@ class DownloaderGUI(tk.Tk):
         self.btn_cancel.config(state="normal")
 
         self.cancel_event.clear()
+        print(tasks)
         threading.Thread(target=self._download_worker, args=(tasks,), daemon=True).start()
 
     def _download_worker(self, tasks):
@@ -310,13 +306,15 @@ class DownloaderGUI(tk.Tk):
                 break
 
             self._log(f"[下载] {acc['username']} / {title}")
-            medias = post.get("medias", [])
-            urls = [m.get("source_url") for m in medias if m.get("source_url")]
+            medias = post.get("attachments", [])
+            urls = [m.get("default") for m in medias if m.get("default")]
+            post_id = str(post.get("post_id"))
             for url in urls:
                 if url.endswith(".m3u8"):
-                    self._download_m3u8(url, acc, title)
+                    print(f"[下载] {url}")
+                    self._download_m3u8(url, acc, title, post_id)
                 else:
-                    self._download_mp4(url, acc, title)
+                    self._download_mp4(url, acc, title, post_id)
 
         self._log("[状态] 下载完成")
         self.downloading = False
@@ -324,18 +322,22 @@ class DownloaderGUI(tk.Tk):
         self.btn_pause.config(state="disabled", text="暂停")
         self.btn_cancel.config(state="disabled")
 
-    def _download_mp4(self, url, acc, title):
+    def _download_mp4(self, url, acc, title, id):
         # 标准 mp4 下载
         try:
-            download_and_merge(url, acc["username"], title)
+            download_and_merge(url,
+                               os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                               title)
             self._log("    完成")
         except Exception as e:
             self._log(f"    [失败] {e}")
 
-    def _download_m3u8(self, url, acc, title):
+    def _download_m3u8(self, url, acc, title, id):
         # m3u8 下载
         try:
-            download_and_merge(url, acc["username"], title)
+            download_and_merge(url,
+                               os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                               title)
             self._log("    完成")
         except Exception as e:
             self._log(f"    [失败] {e}")
@@ -364,5 +366,5 @@ class DownloaderGUI(tk.Tk):
         if self.current_proc:
             try:
                 self.current_proc.terminate()
-            except Exception:
-                pass
+            except (OSError, ValueError) as e:
+                self._log(f"[警告] 终止进程时发生异常: {e}")

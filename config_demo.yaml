@@ -18,14 +18,7 @@ headers:
   user-agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
   x-xsrf-token: "Please input your xsrf token here"
 
-# 整串 Cookie，程序会把它放到请求头中
 cookie: "Please input your cookie here"
-
-# 新增：根据 user_code 获取用户详细信息
 get_users_url: "https://candfans.jp/api/user/get-users"
-
-# 根据 user_id 获取时间线
 get_timeline_url: "https://candfans.jp/api/contents/get-timeline"
-
-# 下载视频片段时的保存目录
 download_dir: "./downloads"

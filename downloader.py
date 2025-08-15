@@ -26,15 +26,53 @@ def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
+def _download_ts_segment(ts_url, ts_path, idx, total, log, pause_event, cancel_event):
+    def _log(msg):
+        if log:
+            log(msg)
+        else:
+            print(msg)
+
+    def _wait_if_paused():
+        if pause_event is not None:
+            pause_event.wait()
+
+    def _should_cancel():
+        return cancel_event is not None and cancel_event.is_set()
+
+    try:
+        resp = safe_get(ts_url, headers=HEADERS, stream=True)
+        resp.raise_for_status()
+    except requests.exceptions.SSLError as e:
+        _log(f"[重试中] TS {idx} SSL 错误: {e}")
+        resp = safe_get(ts_url, headers=HEADERS, stream=True)
+        resp.raise_for_status()
+
+    with open(ts_path, "wb") as ts_f:
+        for chunk in resp.iter_content(1024 * 1024):
+            if _should_cancel():
+                _log("[取消] 用户已取消（TS 下载中）。")
+                raise RuntimeError("Cancelled")
+            _wait_if_paused()
+            if chunk:
+                ts_f.write(chunk)
+
+    if log is None:
+        # 进度条由 tqdm 控制，无需手动输出
+        pass
+    else:
+        _log(f"[TS] {idx + 1}/{total}")
+
+
 def download_and_merge(
-    file_url: str,
-    target_dir: str,
-    output_name: str,
-    url_type: str = "m3u8",
-    log=None,
-    pause_event=None,
-    cancel_event=None,
-    on_ffmpeg=None,
+        file_url: str,
+        target_dir: str,
+        output_name: str,
+        url_type: str = "m3u8",
+        log=None,
+        pause_event=None,
+        cancel_event=None,
+        on_ffmpeg=None,
 ):
     """Download a video (m3u8/mp4) and merge segments via ffmpeg.
 
@@ -72,11 +110,17 @@ def download_and_merge(
     def _should_cancel():
         return cancel_event is not None and cancel_event.is_set()
 
+    def _check_cancel_or_pause():
+        if _should_cancel():
+            _log("[取消] 用户已取消（TS 列表下载前）。")
+            raise RuntimeError("Cancelled")
+        _wait_if_paused()
+
     ensure_dir(target_dir)
 
     # ---- direct mp4 ----
     if url_type == "mp4":
-        output_path = os.path.join(target_dir, output_name)
+        output_path = os.path.join(target_dir, output_name + ".mp4")
         _log(f"[下载 MP4] {output_path}")
         resp = safe_get(file_url, headers=HEADERS, stream=True)
         resp.raise_for_status()
@@ -147,67 +191,31 @@ def download_and_merge(
             with tqdm(total=total, unit="ts", desc="TS 下载") as pbar:
                 for idx, ts in enumerate(ts_urls):
                     if _should_cancel():
-                        _log("[取消] 用户已取消（TS 列表下载前）。")
-                        raise RuntimeError("Cancelled")
-                    _wait_if_paused()
+                        _check_cancel_or_pause()
 
                     ts_name = f"{idx:04d}.ts"
                     ts_path = os.path.join(target_dir, ts_name)
-                    try:
-                        resp = safe_get(ts, headers=HEADERS, stream=True)
-                        resp.raise_for_status()
-                    except requests.exceptions.SSLError as e:
-                        _log(f"[重试中] TS {idx} SSL 错误: {e}")
-                        resp = safe_get(ts, headers=HEADERS, stream=True)
-                        resp.raise_for_status()
-
-                    with open(ts_path, "wb") as ts_f:
-                        for chunk in resp.iter_content(1024 * 1024):
-                            if _should_cancel():
-                                _log("[取消] 用户已取消（TS 下载中）。")
-                                raise RuntimeError("Cancelled")
-                            _wait_if_paused()
-                            if chunk:
-                                ts_f.write(chunk)
+                    _download_ts_segment(ts, ts_path, idx, total, log, pause_event, cancel_event)
                     list_f.write(f"file '{ts_name}'\n")
                     pbar.update(1)
         else:
             for idx, ts in enumerate(ts_urls):
                 if _should_cancel():
-                    _log("[取消] 用户已取消（TS 列表下载前）。")
-                    raise RuntimeError("Cancelled")
-                _wait_if_paused()
+                    _check_cancel_or_pause()
 
                 ts_name = f"{idx:04d}.ts"
                 ts_path = os.path.join(target_dir, ts_name)
-                try:
-                    resp = safe_get(ts, headers=HEADERS, stream=True)
-                    resp.raise_for_status()
-                except requests.exceptions.SSLError as e:
-                    _log(f"[重试中] TS {idx} SSL 错误: {e}")
-                    resp = safe_get(ts, headers=HEADERS, stream=True)
-                    resp.raise_for_status()
-
-                with open(ts_path, "wb") as ts_f:
-                    for chunk in resp.iter_content(1024 * 1024):
-                        if _should_cancel():
-                            _log("[取消] 用户已取消（TS 下载中）。")
-                            raise RuntimeError("Cancelled")
-                        _wait_if_paused()
-                        if chunk:
-                            ts_f.write(chunk)
+                _download_ts_segment(ts, ts_path, idx, total, log, pause_event, cancel_event)
                 list_f.write(f"file '{ts_name}'\n")
-                _log(f"[TS] {idx + 1}/{total}")
 
-    output_path = os.path.join(target_dir, output_name)
+    output_path = os.path.join(target_dir, output_name + ".mp4")
 
-    def _run_ffmpeg(cmd):
+    def _run_ffmpeg(command):
         if log is None and pause_event is None and cancel_event is None and on_ffmpeg is None:
-            subprocess.run(cmd, check=True)
+            subprocess.run(command, check=True)
         else:
-            p = None
             try:
-                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 if on_ffmpeg:
                     on_ffmpeg(p)
                 while True:
@@ -215,21 +223,21 @@ def download_and_merge(
                         _log("[取消] 终止 FFmpeg 进程...")
                         try:
                             p.terminate()
-                        except Exception:
-                            pass
+                        except ProcessLookupError:
+                            pass  # 进程已经结束
                         try:
                             p.wait(timeout=5)
-                        except Exception:
+                        except subprocess.TimeoutExpired:
                             try:
                                 p.kill()
-                            except Exception:
-                                pass
+                            except ProcessLookupError:
+                                pass  # 进程已经结束
                         raise RuntimeError("Cancelled")
                     _wait_if_paused()
                     ret = p.poll()
                     if ret is not None:
                         if ret != 0:
-                            raise subprocess.CalledProcessError(ret, cmd)
+                            raise subprocess.CalledProcessError(ret, command)
                         break
                     time.sleep(0.2)
             finally:
@@ -251,6 +259,8 @@ def download_and_merge(
             "-ignore_unknown",
             "-fflags",
             "+genpts",
+            "-f",
+            "mp4",
             output_path,
         ]
         _run_ffmpeg(cmd)
@@ -272,6 +282,8 @@ def download_and_merge(
             "-ignore_unknown",
             "-fflags",
             "+genpts",
+            "-f",
+            "mp4",
             output_path,
         ]
         _run_ffmpeg(cmd)

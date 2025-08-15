@@ -5,7 +5,7 @@ from urllib3 import Retry
 
 def _create_session() -> requests.Session:
     """Create and configure a requests Session with retry strategy."""
-    session = requests.Session()
+    session_obj = requests.Session()
     retry_strategy = Retry(
         total=5,
         backoff_factor=1,
@@ -14,9 +14,9 @@ def _create_session() -> requests.Session:
         raise_on_status=False,
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-    return session
+    session_obj.mount("http://", adapter)
+    session_obj.mount("https://", adapter)
+    return session_obj
 
 
 _session = None
