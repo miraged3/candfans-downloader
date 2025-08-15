@@ -1,9 +1,7 @@
-import copy
 import os
 import re
 import shutil
 import subprocess
-from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
@@ -12,15 +10,11 @@ from requests.adapters import HTTPAdapter
 from tqdm import tqdm
 from urllib3 import Retry
 
-
-# 加载配置文件
-def load_config(path="config.yaml"):
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+from config import HEADERS, cfg, check_requirements, load_config
 
 
 try:
-    cfg = load_config()
+    load_config()
 except FileNotFoundError:
     print("错误：未找到 config.yaml")
     exit(1)
@@ -28,51 +22,7 @@ except yaml.YAMLError as e:
     print(f"配置文件格式错误: {e}")
     exit(1)
 
-# 替换原有 import pkg_resources 为以下内容
-from importlib import metadata
 import sys
-
-
-def check_requirements(req_file="requirements.txt"):
-    req_path = Path(req_file)
-    if not req_path.exists():
-        print(f"警告：未找到 {req_file}，跳过依赖检查")
-        return True
-
-    with open(req_path, encoding="utf-8") as f:
-        requirements = [r.strip() for r in f.read().splitlines() if r.strip() and not r.startswith("#")]
-
-    missing_packages = []
-    for req in requirements:
-        try:
-            # 解析包名和版本要求（如 package>=1.0）
-            if ">=" in req:
-                pkg_name, version_required = req.split(">=", 1)
-                installed_version = metadata.version(pkg_name)
-                if installed_version < version_required:
-                    raise metadata.PackageNotFoundError
-            elif "==" in req:
-                pkg_name, version_required = req.split("==", 1)
-                installed_version = metadata.version(pkg_name)
-                if installed_version != version_required:
-                    raise metadata.PackageNotFoundError
-            else:
-                # 只检查是否安装
-                metadata.version(req)
-        except metadata.PackageNotFoundError:
-            missing_packages.append(req)
-
-    if missing_packages:
-        print("缺少依赖或版本不匹配：")
-        for pkg in missing_packages:
-            print(f"  - {pkg}")
-        return False
-    return True
-
-
-# 公共 headers（含 Cookie 和 x-xsrf-token）
-HEADERS = copy.deepcopy(cfg["headers"])
-HEADERS["Cookie"] = cfg["cookie"]
 
 session = requests.Session()
 retry_strategy = Retry(

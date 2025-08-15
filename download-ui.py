@@ -9,13 +9,21 @@ import threading
 import queue
 import sys
 import time
-from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
 import yaml
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
+
+from config import (
+    HEADERS,
+    cfg,
+    check_requirements,
+    load_config,
+    refresh_headers_from_cfg,
+    save_config,
+)
 
 # === GUI ===
 import tkinter as tk
@@ -26,81 +34,14 @@ from tkinter.scrolledtext import ScrolledText
 
 # ----------------- 你的原有逻辑（少量改造以便插入GUI） -----------------
 
-# 加载配置文件
-def load_config(path="config.yaml"):
-    with open(path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
-
-
 try:
-    cfg = load_config()
+    load_config()
 except FileNotFoundError:
     print("错误：未找到 config.yaml")
     sys.exit(1)
 except yaml.YAMLError as e:
     print(f"配置文件格式错误: {e}")
     sys.exit(1)
-
-# 替换原有 import pkg_resources 为以下内容
-from importlib import metadata
-
-
-def check_requirements(req_file="requirements.txt"):
-    req_path = Path(req_file)
-    if not req_path.exists():
-        print(f"警告：未找到 {req_file}，跳过依赖检查")
-        return True
-
-    with open(req_path, encoding="utf-8") as f:
-        requirements = [r.strip() for r in f.read().splitlines() if r.strip() and not r.startswith("#")]
-
-    missing_packages = []
-    for req in requirements:
-        try:
-            if ">=" in req:
-                pkg_name, version_required = req.split(">=", 1)
-                installed_version = metadata.version(pkg_name)
-                if installed_version < version_required:
-                    raise metadata.PackageNotFoundError
-            elif "==" in req:
-                pkg_name, version_required = req.split("==", 1)
-                installed_version = metadata.version(pkg_name)
-                if installed_version != version_required:
-                    raise metadata.PackageNotFoundError
-            else:
-                metadata.version(req)
-        except metadata.PackageNotFoundError:
-            missing_packages.append(req)
-
-    if missing_packages:
-        print("缺少依赖或版本不匹配：")
-        for pkg in missing_packages:
-            print(f"  - {pkg}")
-        return False
-    return True
-
-
-HEADERS = {}
-
-
-def save_config(config, path="config.yaml"):
-    """保存配置到磁盘"""
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(config, f, allow_unicode=True, sort_keys=False)
-
-
-def refresh_headers_from_cfg():
-    """根据全局 cfg 刷新 HEADERS"""
-    global HEADERS
-    headers = copy.deepcopy(cfg.get("headers", {})) if cfg else {}
-    cookie = cfg.get("cookie") if cfg else None
-    if cookie:
-        headers["Cookie"] = cookie
-    HEADERS = headers
-
-
-# 初始化一次
-refresh_headers_from_cfg()
 
 session = requests.Session()
 retry_strategy = Retry(
@@ -472,11 +413,8 @@ class DownloaderGUI(tk.Tk):
         ConfigDialog(self, cfg, on_save=self.on_config_saved)
 
     def on_config_saved(self, new_cfg: dict):
-        """弹窗保存后更新全局 cfg / headers，并落盘"""
-        global cfg
-        cfg = new_cfg  # 替换全局配置（也可做 cfg.clear(); cfg.update(new_cfg)）
-        save_config(cfg)  # 写回 config.yaml
-        refresh_headers_from_cfg()  # 让会话立刻使用新 header/cookie
+        """弹窗保存后更新配置并落盘"""
+        save_config(new_cfg)  # 写回 config.yaml 并刷新头部
         self._log("[配置] 已保存并生效。")
 
     # ---------- 事件 ----------
