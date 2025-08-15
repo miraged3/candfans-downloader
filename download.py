@@ -28,10 +28,10 @@ except yaml.YAMLError as e:
     print(f"配置文件格式错误: {e}")
     exit(1)
 
-
 # 替换原有 import pkg_resources 为以下内容
 from importlib import metadata
 import sys
+
 
 def check_requirements(req_file="requirements.txt"):
     req_path = Path(req_file)
@@ -70,7 +70,6 @@ def check_requirements(req_file="requirements.txt"):
     return True
 
 
-
 # 公共 headers（含 Cookie 和 x-xsrf-token）
 HEADERS = copy.deepcopy(cfg["headers"])
 HEADERS["Cookie"] = cfg["cookie"]
@@ -93,7 +92,8 @@ def safe_get(url_1, **kwargs):
 
 
 # 入口前检查依赖
-if shutil.which("ffmpeg") is None:
+ffmpeg_path = shutil.which("ffmpeg")
+if ffmpeg_path is None:
     print("错误：未找到 ffmpeg。请先安装 ffmpeg 并确保其在系统 PATH 中。")
     exit(1)
 
@@ -213,7 +213,6 @@ def download_and_merge(file_url, target_dir, output_name, url_type='m3u8'):
                     print(f"[重试中] TS {idx} SSL 错误: {e}")
                     resp = safe_get(ts, headers=HEADERS, stream=True)
                     resp.raise_for_status()
-                resp.raise_for_status()
                 with open(ts_path, "wb") as ts_f:
                     for chunk in resp.iter_content(1024 * 1024):
                         if chunk:
@@ -221,20 +220,15 @@ def download_and_merge(file_url, target_dir, output_name, url_type='m3u8'):
                 list_f.write(f"file '{ts_name}'\n")
                 pbar.update(1)
 
-    # 合并 TS - 修改 FFmpeg 命令以确保音频轨道正确处理
+    # 合并 TS
     output_path = os.path.join(target_dir, output_name)
-    # 使用更通用的编码选项确保音频轨道被正确处理
-    cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
+    cmd = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
            "-c", "copy", "-ignore_unknown", "-fflags", "+genpts", output_path]
     try:
         subprocess.run(cmd, check=True)
-    except FileNotFoundError:
-        print("错误：无法执行 ffmpeg。请确保 ffmpeg 已正确安装并在 PATH 中。")
-        exit(1)
     except subprocess.CalledProcessError as e:
         print(f"警告：FFmpeg 合并失败，尝试使用重新编码方式: {e}")
-        # 如果直接复制失败，尝试重新编码
-        cmd = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
+        cmd = [ffmpeg_path, "-y", "-f", "concat", "-safe", "0", "-i", filelist_path,
                "-c:v", "libx264", "-c:a", "aac", "-ignore_unknown", "-fflags", "+genpts", output_path]
         try:
             subprocess.run(cmd, check=True)
