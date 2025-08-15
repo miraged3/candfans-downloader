@@ -296,7 +296,6 @@ class DownloaderGUI(tk.Tk):
         self.btn_cancel.config(state="normal")
 
         self.cancel_event.clear()
-        print(tasks)
         threading.Thread(target=self._download_worker, args=(tasks,), daemon=True).start()
 
     def _download_worker(self, tasks):
@@ -311,7 +310,6 @@ class DownloaderGUI(tk.Tk):
             post_id = str(post.get("post_id"))
             for url in urls:
                 if url.endswith(".m3u8"):
-                    print(f"[下载] {url}")
                     self._download_m3u8(url, acc, title, post_id)
                 else:
                     self._download_mp4(url, acc, title, post_id)
