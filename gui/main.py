@@ -127,7 +127,10 @@ class DownloaderGUI(tk.Tk):
         logf = ttk.Labelframe(self, text="日志")
         logf.pack(fill="both", expand=False, padx=10, pady=(0, 10))
         self.log_text = tk.Text(logf, height=10)
-        self.log_text.pack(fill="both", expand=True, padx=8, pady=8)
+        self.log_text.pack(fill="both", expand=True, padx=8, pady=(8, 4))
+        self.progress_var = tk.DoubleVar(value=0)
+        self.progress_bar = ttk.Progressbar(logf, variable=self.progress_var, mode="determinate")
+        self.progress_bar.pack(fill="x", padx=8, pady=(0, 8))
 
     # ---------- 日志 ----------
     def _log(self, msg: str):
@@ -142,6 +145,14 @@ class DownloaderGUI(tk.Tk):
         except queue.Empty:
             pass
         self.after(120, self._flush_logs)
+
+    def _update_progress(self, current, total):
+        self.progress_bar.config(maximum=total or 1)
+        self.progress_var.set(current)
+
+    def _reset_progress(self):
+        self.progress_bar.config(maximum=1)
+        self.progress_var.set(0)
 
     def open_config(self):
         # 正在下载时允许查看/修改，但提示更稳妥
@@ -309,6 +320,7 @@ class DownloaderGUI(tk.Tk):
             urls = [m.get("default") for m in medias if m.get("default")]
             post_id = str(post.get("post_id"))
             for url in urls:
+                self.after(0, self._reset_progress)
                 if url.endswith(".m3u8"):
                     self._download_m3u8(url, acc, title, post_id)
                 else:
@@ -323,9 +335,14 @@ class DownloaderGUI(tk.Tk):
     def _download_mp4(self, url, acc, title, id):
         # 标准 mp4 下载
         try:
-            download_and_merge(url,
-                               os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
-                               title)
+            def progress_cb(current, total):
+                self.after(0, self._update_progress, current, total)
+            download_and_merge(
+                url,
+                os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                title,
+                progress_cb=progress_cb,
+            )
             self._log("    完成")
         except Exception as e:
             self._log(f"    [失败] {e}")
@@ -333,9 +350,14 @@ class DownloaderGUI(tk.Tk):
     def _download_m3u8(self, url, acc, title, id):
         # m3u8 下载
         try:
-            download_and_merge(url,
-                               os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
-                               title)
+            def progress_cb(current, total):
+                self.after(0, self._update_progress, current, total)
+            download_and_merge(
+                url,
+                os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                title,
+                progress_cb=progress_cb,
+            )
             self._log("    完成")
         except Exception as e:
             self._log(f"    [失败] {e}")
