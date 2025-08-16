@@ -243,7 +243,7 @@ class DownloaderGUI(tk.Tk):
                             self.username = user.get("username", "")
                             cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
                             cfg["cookie"] = cookie_str
-                            save_config(cfg)
+                            save_config(cfg.copy())
                             window.destroy()
                             self.username_var.set(self.username)
                             break

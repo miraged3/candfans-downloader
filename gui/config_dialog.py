@@ -1,4 +1,5 @@
 import copy
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 
@@ -61,7 +62,11 @@ class ConfigDialog(tk.Toplevel):
         self.bind("<Escape>", lambda e: self.destroy())
 
     def _browse_dir(self):
-        d = filedialog.askdirectory(initialdir=self.download_dir_var.get() or ".")
+        # filedialog requires a valid directory and proper parent; otherwise it may
+        # hang when this dialog has grabbed the focus. Expand user symbols and
+        # explicitly set *parent* so the dialog behaves correctly on all systems.
+        cur = os.path.expanduser(self.download_dir_var.get().strip() or ".")
+        d = filedialog.askdirectory(parent=self, initialdir=cur)
         if d:
             self.download_dir_var.set(d)
 
