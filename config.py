@@ -10,8 +10,46 @@ HEADERS: dict = {}
 
 
 def load_config(path: str = "config.yaml") -> dict:
-    """Load configuration from *path* and refresh HEADERS."""
-    with open(path, "r", encoding="utf-8") as f:
+    """Load configuration from *path* and refresh HEADERS.
+
+    If *path* does not exist a new configuration file is created automatically
+    using ``config_demo.yaml`` as a template (falling back to a minimal built-in
+    default when the demo file is missing).
+    """
+
+    cfg_path = Path(path)
+    if not cfg_path.exists():
+        template_path = Path(__file__).with_name("config_demo.yaml")
+        if template_path.exists():
+            with open(template_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+        else:
+            # Fallback defaults used when the demo file is unavailable
+            data = {
+                "base_url": "https://candfans.jp/api/user/get-entry-plans",
+                "get_users_url": "https://candfans.jp/api/user/get-users",
+                "get_timeline_url": "https://candfans.jp/api/contents/get-timeline",
+                "download_dir": "./downloads",
+                "headers": {
+                    "accept": "application/json",
+                    "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                    "priority": "u=1, i",
+                    "referer": "https://candfans.jp/mypage/plan/admission",
+                    "sec-ch-ua": '\"Google Chrome\";v=\"137\", \"Chromium\";v=\"137\", \"Not/A)Brand\";v=\"24\"',
+                    "sec-ch-ua-mobile": "?0",
+                    "sec-ch-ua-platform": '\"Windows\"',
+                    "sec-fetch-dest": "empty",
+                    "sec-fetch-mode": "cors",
+                    "sec-fetch-site": "same-origin",
+                    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+                    "x-xsrf-token": "",
+                },
+                "cookie": "",
+            }
+        save_config(data, path)
+        return cfg
+
+    with open(cfg_path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     cfg.clear()
     if data:
