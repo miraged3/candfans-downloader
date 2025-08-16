@@ -1,4 +1,3 @@
-import http.cookies
 import os.path
 import queue
 import threading
@@ -19,13 +18,13 @@ from config import (
     HEADERS,
 )
 from downloader import download_and_merge
-from network import safe_get
 from .config_dialog import ConfigDialog
 
 
 class DownloaderGUI(tk.Tk):
     def __init__(self):
         super().__init__()
+        self._logging_in = None
         self.title("CandFans Downloader")
         self.geometry("1100x700")
 
@@ -39,6 +38,7 @@ class DownloaderGUI(tk.Tk):
         self.pause_event.set()  # 初始为“运行态”
         self.cancel_event = threading.Event()
         self.current_proc = None  # 记录当前 ffmpeg 进程（Popen），取消时终止
+        self.username = ""
 
         # UI
         self._build_ui()
@@ -240,14 +240,12 @@ class DownloaderGUI(tk.Tk):
 
                         if resp.get("data") and resp["data"].get("users"):
                             user = resp["data"]["users"][0]
-                            username = user.get("username", "")
-
+                            self.username = user.get("username", "")
                             cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
                             cfg["cookie"] = cookie_str
                             save_config(cfg)
-
-                            self.username_var.set(username)
-                            webview.destroy_window(window)
+                            window.destroy()
+                            self.username_var.set(self.username)
                             break
 
                     except Exception as e:
@@ -255,9 +253,9 @@ class DownloaderGUI(tk.Tk):
             finally:
                 # 退出时重置登录状态，避免无法再次登录
                 self._logging_in = False
+                window.destroy()
 
         window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
-        # 在主线程启动 webview，避免线程错误
         webview.start(_check_login, (window,), gui="edgechromium")
 
     def open_config(self):
