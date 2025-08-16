@@ -246,10 +246,8 @@ class DownloaderGUI(tk.Tk):
                             cfg["cookie"] = cookie_str
                             save_config(cfg)
 
-                            self.after(0, self.username_var.set, username)
-                            # 在主线程关闭登录窗口
-                            self.after(0, lambda: webview.destroy_window(window))
-                            self._logging_in = False
+                            self.username_var.set(username)
+                            webview.destroy_window(window)
                             break
 
                     except Exception as e:
@@ -259,8 +257,8 @@ class DownloaderGUI(tk.Tk):
                 self._logging_in = False
 
         window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
-        # 在后台线程启动 webview，避免阻塞 Tk 主循环
-        threading.Thread(target=webview.start, args=(_check_login, (window,)), daemon=True).start()
+        # 在主线程启动 webview，避免线程错误
+        webview.start(_check_login, (window,), gui="edgechromium")
 
     def open_config(self):
         # 正在下载时允许查看/修改，但提示更稳妥
