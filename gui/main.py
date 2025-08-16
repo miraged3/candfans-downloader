@@ -174,22 +174,12 @@ class DownloaderGUI(tk.Tk):
 
         def task():
             try:
-                params = {
-                    "user_id": 0,
-                    "sort_order": "new",
-                    "record": 1,
-                    "page": 1,
-                    "post_type[0]": 1,
-                }
-                resp = safe_get(cfg["get_timeline_url"], headers=HEADERS, params=params)
-                data = resp.json()
-                data = data.get("data", data)
-                username = (
-                    data.get("contents", [{}])[0]
-                    .get("user", {})
-                    .get("username")
-                )
-            except Exception:
+                resp = get_user_mine(headers=HEADERS)
+                if resp.get("data") and resp["data"].get("users"):
+                    user = resp["data"]["users"][0]
+                    username = user.get("username", "")
+            except Exception as e:
+                print(e)
                 username = None
 
             self.after(0, lambda: self.username_var.set(username or "未登录"))
