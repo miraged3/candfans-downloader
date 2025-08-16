@@ -54,48 +54,53 @@ class DownloaderGUI(tk.Tk):
         top = ttk.Frame(self)
         top.pack(fill="x", padx=10, pady=8)
 
-        self.btn_config = ttk.Button(top, text="配置", command=self.open_config)
-        self.btn_config.pack(side="right")
+        top_row1 = ttk.Frame(top)
+        top_row1.pack(fill="x")
+        top_row2 = ttk.Frame(top)
+        top_row2.pack(fill="x", pady=(4, 0))
 
-        self.btn_login = ttk.Button(top, text="登录", command=self.on_login)
-        self.btn_login.pack(side="right", padx=(0, 8))
+        self.btn_login = ttk.Button(top_row2, text="登录", command=self.on_login)
+        self.btn_login.pack(side="left")
+
+        self.btn_config = ttk.Button(top_row2, text="配置", command=self.open_config)
+        self.btn_config.pack(side="left", padx=(8, 0))
 
         self.username_var = tk.StringVar(value="未登录")
-        self.lbl_username = ttk.Label(top, textvariable=self.username_var)
+        self.lbl_username = ttk.Label(top_row1, textvariable=self.username_var)
         self.lbl_username.pack(side="right", padx=(0, 8))
 
-        self.btn_load_accounts = ttk.Button(top, text="加载账号列表", command=self.on_load_accounts)
+        self.btn_load_accounts = ttk.Button(top_row1, text="加载账号列表", command=self.on_load_accounts)
         self.btn_load_accounts.pack(side="left")
 
-        ttk.Label(top, text="每账号页数:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row1, text="每账号页数:").pack(side="left", padx=(12, 4))
         self.pages_var = tk.IntVar(value=3)
-        self.pages_spin = ttk.Spinbox(top, from_=1, to=999, textvariable=self.pages_var, width=5)
+        self.pages_spin = ttk.Spinbox(top_row1, from_=1, to=999, textvariable=self.pages_var, width=5)
         self.pages_spin.pack(side="left")
 
         self.all_pages_var = tk.BooleanVar(value=False)
-        self.chk_all_pages = ttk.Checkbutton(top, text="抓取全部页", variable=self.all_pages_var)
+        self.chk_all_pages = ttk.Checkbutton(top_row1, text="抓取全部页", variable=self.all_pages_var)
         self.chk_all_pages.pack(side="left", padx=(8, 0))
 
-        ttk.Label(top, text="关键字:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row1, text="关键字:").pack(side="left", padx=(12, 4))
         self.keyword_var = tk.StringVar()
-        self.keyword_entry = ttk.Entry(top, textvariable=self.keyword_var, width=18)
+        self.keyword_entry = ttk.Entry(top_row1, textvariable=self.keyword_var, width=18)
         self.keyword_entry.pack(side="left")
 
-        ttk.Label(top, text="月份:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row1, text="月份:").pack(side="left", padx=(12, 4))
         self.month_var = tk.StringVar(value="全部")
-        self.month_combo = ttk.Combobox(top, textvariable=self.month_var, width=12, state="readonly", values=["全部"])
+        self.month_combo = ttk.Combobox(top_row1, textvariable=self.month_var, width=12, state="readonly", values=["全部"])
         self.month_combo.pack(side="left")
 
-        ttk.Label(top, text="类型:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row1, text="类型:").pack(side="left", padx=(12, 4))
         self.type_var = tk.StringVar(value="全部")
-        self.type_combo = ttk.Combobox(top, textvariable=self.type_var, width=8, state="readonly",
+        self.type_combo = ttk.Combobox(top_row1, textvariable=self.type_var, width=8, state="readonly",
                                        values=["全部", "mp4", "m3u8"])
         self.type_combo.pack(side="left")
 
-        self.btn_fetch_posts = ttk.Button(top, text="拉取帖子", command=self.on_fetch_posts)
+        self.btn_fetch_posts = ttk.Button(top_row1, text="拉取帖子", command=self.on_fetch_posts)
         self.btn_fetch_posts.pack(side="left", padx=(12, 0))
 
-        self.btn_apply_filter = ttk.Button(top, text="筛选", command=self.apply_filter)
+        self.btn_apply_filter = ttk.Button(top_row1, text="筛选", command=self.apply_filter)
         self.btn_apply_filter.pack(side="left", padx=(8, 0))
 
         # 中部：左右布局
