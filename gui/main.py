@@ -16,8 +16,10 @@ from api import (
 from config import (
     cfg,
     save_config,
+    HEADERS,
 )
 from downloader import download_and_merge
+from network import safe_get
 from .config_dialog import ConfigDialog
 
 
@@ -40,6 +42,8 @@ class DownloaderGUI(tk.Tk):
 
         # UI
         self._build_ui()
+
+        self.auto_login()
 
         # 定时器：刷日志
         self.after(100, self._flush_logs)
@@ -164,6 +168,33 @@ class DownloaderGUI(tk.Tk):
     def _reset_progress(self):
         self.progress_bar.config(maximum=1)
         self.progress_var.set(0)
+
+    def auto_login(self):
+        self.username_var.set("尝试登录中")
+
+        def task():
+            try:
+                params = {
+                    "user_id": 0,
+                    "sort_order": "new",
+                    "record": 1,
+                    "page": 1,
+                    "post_type[0]": 1,
+                }
+                resp = safe_get(cfg["get_timeline_url"], headers=HEADERS, params=params)
+                data = resp.json()
+                data = data.get("data", data)
+                username = (
+                    data.get("contents", [{}])[0]
+                    .get("user", {})
+                    .get("username")
+                )
+            except Exception:
+                username = None
+
+            self.after(0, lambda: self.username_var.set(username or "未登录"))
+
+        threading.Thread(target=task, daemon=True).start()
 
     def on_login(self):
         """Open login window and capture cookies after user logs in."""
