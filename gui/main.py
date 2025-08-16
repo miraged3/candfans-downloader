@@ -202,59 +202,65 @@ class DownloaderGUI(tk.Tk):
 
         def _check_login(window):
             cookie_dict = {}
-            while True:
-                time.sleep(1)
-                try:
-                    cookies = window.get_cookies()
-                    if not cookies:
-                        continue
+            try:
+                while True:
+                    time.sleep(1)
+                    try:
+                        cookies = window.get_cookies()
+                        if not cookies:
+                            continue
 
-                    # 构造 Cookie 字符串
-                    for c in cookies:
-                        for key, morsel in c.items():
-                            cookie_dict[key] = morsel.value
-                    cookie_str = "; ".join(f"{k}={v}" for k, v in cookie_dict.items())
+                        # 构造 Cookie 字符串
+                        for c in cookies:
+                            for key, morsel in c.items():
+                                cookie_dict[key] = morsel.value
+                        cookie_str = "; ".join(f"{k}={v}" for k, v in cookie_dict.items())
 
-                    # 提取 XSRF-TOKEN
-                    xsrf = cookie_dict.get("XSRF-TOKEN", "")
-                    xsrf = unquote(xsrf)
+                        # 提取 XSRF-TOKEN
+                        xsrf = cookie_dict.get("XSRF-TOKEN", "")
+                        xsrf = unquote(xsrf)
 
-                    # 构造 headers（对照 curl）
-                    headers = {
-                        "accept": "application/json",
-                        "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-                        "priority": "u=1, i",
-                        "referer": "https://candfans.jp/",
-                        "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
-                        "sec-ch-ua-mobile": "?0",
-                        "sec-ch-ua-platform": '"Windows"',
-                        "sec-fetch-dest": "empty",
-                        "sec-fetch-mode": "cors",
-                        "sec-fetch-site": "same-origin",
-                        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
-                        "x-xsrf-token": xsrf,
-                        "Cookie": cookie_str,
-                    }
-                    resp = get_user_mine(headers=headers)
+                        # 构造 headers（对照 curl）
+                        headers = {
+                            "accept": "application/json",
+                            "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                            "priority": "u=1, i",
+                            "referer": "https://candfans.jp/",
+                            "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+                            "sec-ch-ua-mobile": "?0",
+                            "sec-ch-ua-platform": '"Windows"',
+                            "sec-fetch-dest": "empty",
+                            "sec-fetch-mode": "cors",
+                            "sec-fetch-site": "same-origin",
+                            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+                            "x-xsrf-token": xsrf,
+                            "Cookie": cookie_str,
+                        }
+                        resp = get_user_mine(headers=headers)
 
-                    if resp.get("data") and resp["data"].get("users"):
-                        user = resp["data"]["users"][0]
-                        username = user.get("username", "")
+                        if resp.get("data") and resp["data"].get("users"):
+                            user = resp["data"]["users"][0]
+                            username = user.get("username", "")
 
-                        cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
-                        cfg["cookie"] = cookie_str
-                        save_config(cfg)
+                            cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
+                            cfg["cookie"] = cookie_str
+                            save_config(cfg)
 
-                        self.after(0, self.username_var.set, username)
-                        window.destroy()
-                        break
+                            self.after(0, self.username_var.set, username)
+                            # 在主线程关闭登录窗口
+                            self.after(0, lambda: webview.destroy_window(window))
+                            self._logging_in = False
+                            break
 
-                except Exception as e:
-                    print(e)
+                    except Exception as e:
+                        print(e)
+            finally:
+                # 退出时重置登录状态，避免无法再次登录
+                self._logging_in = False
 
         window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
-        webview.start(_check_login, (window,))
-        self._logging_in = False
+        # 在后台线程启动 webview，避免阻塞 Tk 主循环
+        threading.Thread(target=webview.start, args=(_check_login, (window,)), daemon=True).start()
 
     def open_config(self):
         # 正在下载时允许查看/修改，但提示更稳妥
