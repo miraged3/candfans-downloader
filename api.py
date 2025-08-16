@@ -30,6 +30,16 @@ def get_user_info_by_code(user_code):
     }
 
 
+def get_user_mine(headers=None):
+    """Retrieve information of the currently logged in user."""
+    resp = safe_get(
+        "https://candfans.jp/api/user/get-user-mine",
+        headers=headers or HEADERS,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def get_timeline(user_id, page=1, record=12):
     """Fetch timeline posts for a user."""
     params = {

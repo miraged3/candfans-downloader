@@ -2,3 +2,4 @@ pyyaml
 requests
 tqdm
 urllib3
+pywebview
