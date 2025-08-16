@@ -1,36 +1,81 @@
-# Candfans Downloader
-Downloads all the files from a Candfans.com account.
+# CandFans Downloader
 
-### Usage
-1. Install Python 3.8+
-2. Install the required modules: `pip install -r requirements.txt`
-3. Install ffmpeg, and make sure it's in your PATH. In Windows, you can download it from [here](https://www.gyan.dev/ffmpeg/builds/).
-4. Copy config_demo.py to config.py in project root directory.
-5. Login to [Candfans](https://candfans.jp/mypage) with Chrome, and press F12, navigate to the Network tab, and refresh the page, find the request named `get-user-mine`, right click it, and click Copy as cURL(bash).
-6. Paste the cURL into a text editor, find the content of `x-xsrf-token` and `-b`, then paste them into `x-xsrf-token` and `cookie` in config.py. ![image](/doc/image1.png)![image](/doc/image2.png)
-7. Run `python download.py`
+CandFans Downloader is a Python application for archiving content from your [candfans.jp](https://candfans.jp/) subscriptions. It provides a desktop GUI that logs into your account, fetches posts from subscribed creators, and saves video files locally.
 
-### 中文介绍
+## Features
+- Embedded login window captures cookies and XSRF token automatically, storing them in `config.yaml`.
+- Configuration dialog to edit API endpoints, authentication headers, and download directory.
+- Load account list from your subscriptions and fetch timeline posts.
+- Filter posts by keyword, month, and media type (`mp4` or `m3u8`).
+- Batch download with progress bar, pause/resume, and cancel support.
+- Merges `m3u8` streams into MP4 files using `ffmpeg`.
 
-用于下载 Candfans.com 订阅的视频
+## Requirements
+- Python 3.8+
+- Dependencies from `requirements.txt`
+- [FFmpeg](https://ffmpeg.org/) available in your `PATH`.
 
-### 使用方法
+## Installation
 
-1. 安装 Python 3.8 或以上版本
-2. 安装所需依赖：
+```bash
+git clone https://github.com/<repo>/candfans-downloader.git
+cd candfans-downloader
+python -m venv venv   # optional
+source venv/bin/activate  # or venv\\Scripts\\activate on Windows
+pip install -r requirements.txt
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. 安装 ffmpeg，并确保已添加到系统 PATH
-   在 Windows 下，可从 [这里](https://www.gyan.dev/ffmpeg/builds/) 下载
-4. 将 `config_demo.py` 复制到项目根目录下，命名为 `config.py`
-5. 在 Chrome 中登录 [Candfans](https://candfans.jp/mypage)，按 F12 打开开发者工具，切换到 Network（网络）面板，刷新页面，找到名为 `get-user-mine` 的请求，右键点击并选择 **Copy as cURL (bash)**
-6. 将复制的 cURL 命令粘贴到文本编辑器中，提取其中的 `x-xsrf-token` 和 `-b`（cookie）字段的内容，分别填入 `config.py` 中的 `x-xsrf-token` 和 `cookie` 配置项，如图所示：
-   ![image](/doc/image1.png)
-   ![image](/doc/image2.png)
-7. 在项目根目录下运行：
+Ensure `ffmpeg` is installed and accessible.
 
-   ```bash
-   python download.py
-   ```
+## Configuration
+
+Running the program for the first time creates a `config.yaml`.
+Open **Config** in the GUI to fill in:
+
+| Field | Description |
+| --- | --- |
+| `base_url` | API endpoint for your subscription list |
+| `get_users_url` | API endpoint for user info by code |
+| `get_timeline_url` | API endpoint for timeline posts |
+| `headers.x-xsrf-token` | XSRF token from CandFans |
+| `cookie` | login cookies |
+| `download_dir` | folder for saved files |
+
+### Automatic login
+
+Click **Login** in the GUI. A browser window appears; sign in and the application captures cookies and the XSRF token, saving them to `config.yaml` automatically.
+
+### Manual token retrieval
+
+If automatic login fails, obtain the values manually:
+
+1. Log in to CandFans using Chrome.
+2. Open Developer Tools (`F12`) → **Network** and refresh the page.
+3. Locate the `get-user-mine` request, right-click, and choose **Copy as cURL**.
+4. Extract `x-xsrf-token` and the cookie string from the command and paste them into `config.yaml`.
+
+![Token location](doc/image1.png)
+![Cookie location](doc/image2.png)
+
+## Running
+
+Start the GUI:
+
+```bash
+python main.py
+```
+
+Typical workflow:
+
+1. **Login** – capture authentication cookies.
+2. **Load account list** – retrieves all subscribed creators.
+3. **Fetch posts** – select accounts and choose number of pages or fetch all; optional filters for keyword, month, and type.
+4. **Download** – select desired posts and click *Start Download*. Use *Pause* or *Cancel* as needed. Downloads are saved under `download_dir`.
+
+## Programmatic use
+
+The core download logic lives in `downloader.download_and_merge()` which accepts a media URL and merges `m3u8` segments with `ffmpeg`. You may import and use this function in your own scripts.
+
+---
+
+*CandFans Downloader is intended for personal archival of legally obtained content.*
