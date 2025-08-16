@@ -170,39 +170,34 @@ class DownloaderGUI(tk.Tk):
             return
         self._logging_in = True
 
-        def _open_login():
-            import webview
-            from urllib.parse import unquote
+        import webview
+        from urllib.parse import unquote
 
-            window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
+        def _check_login(window):
+            while True:
+                time.sleep(1)
+                try:
+                    cookies = webview.get_cookies("https://candfans.jp")
+                    if not cookies:
+                        continue
+                    cookie_str = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
+                    resp = get_user_mine(headers={"Cookie": cookie_str})
+                    if resp.get("data") and resp["data"].get("user"):
+                        user = resp["data"]["user"]
+                        username = user.get("username", "")
+                        xsrf = next((c["value"] for c in cookies if c["name"] == "XSRF-TOKEN"), "")
+                        cfg.setdefault("headers", {})["x-xsrf-token"] = unquote(xsrf)
+                        cfg["cookie"] = cookie_str
+                        save_config(cfg)
+                        self.after(0, self.username_var.set, username)
+                        webview.destroy_window(window)
+                        break
+                except Exception:
+                    pass
 
-            def _check_login():
-                while True:
-                    time.sleep(1)
-                    try:
-                        cookies = webview.get_cookies("https://candfans.jp")
-                        if not cookies:
-                            continue
-                        cookie_str = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
-                        resp = get_user_mine(headers={"Cookie": cookie_str})
-                        if resp.get("data") and resp["data"].get("user"):
-                            user = resp["data"]["user"]
-                            username = user.get("username", "")
-                            xsrf = next((c["value"] for c in cookies if c["name"] == "XSRF-TOKEN"), "")
-                            cfg.setdefault("headers", {})["x-xsrf-token"] = unquote(xsrf)
-                            cfg["cookie"] = cookie_str
-                            save_config(cfg)
-                            self.after(0, self.username_var.set, username)
-                            webview.destroy_window(window)
-                            break
-                    except Exception:
-                        pass
-                self._logging_in = False
-
-            threading.Thread(target=_check_login, daemon=True).start()
-            webview.start()
-
-        threading.Thread(target=_open_login, daemon=True).start()
+        window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
+        webview.start(_check_login, (window,))
+        self._logging_in = False
 
     def open_config(self):
         # 正在下载时允许查看/修改，但提示更稳妥
