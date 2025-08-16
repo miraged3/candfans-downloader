@@ -14,9 +14,6 @@ def main() -> None:
     """Load configuration, verify requirements and launch the GUI."""
     try:
         load_config()
-    except FileNotFoundError:
-        print("错误：未找到 config.yaml")
-        sys.exit(1)
     except yaml.YAMLError as e:
         print(f"配置文件格式错误: {e}")
         sys.exit(1)

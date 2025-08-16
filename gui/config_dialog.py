@@ -1,9 +1,6 @@
 import copy
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-from tkinter.scrolledtext import ScrolledText
-
-import yaml
 
 
 class ConfigDialog(tk.Toplevel):
@@ -36,29 +33,22 @@ class ConfigDialog(tk.Toplevel):
         self.base_url_var = tk.StringVar(value=self._cfg.get("base_url", ""))
         self.get_users_url_var = tk.StringVar(value=self._cfg.get("get_users_url", ""))
         self.get_timeline_url_var = tk.StringVar(value=self._cfg.get("get_timeline_url", ""))
+        self.xsrf_var = tk.StringVar(value=self._cfg.get("headers", {}).get("x-xsrf-token", ""))
         self.cookie_var = tk.StringVar(value=self._cfg.get("cookie", ""))
         self.download_dir_var = tk.StringVar(value=self._cfg.get("download_dir", ""))
 
         add_row("base_url", self.base_url_var, 0)
         add_row("get_users_url", self.get_users_url_var, 1)
         add_row("get_timeline_url", self.get_timeline_url_var, 2)
-        add_row("cookie", self.cookie_var, 3)
+        add_row("x-xsrf-token", self.xsrf_var, 3)
+        add_row("cookie", self.cookie_var, 4)
 
-        ttk.Label(frm, text="download_dir").grid(row=4, column=0, sticky="w", pady=4)
+        ttk.Label(frm, text="download_dir").grid(row=5, column=0, sticky="w", pady=4)
         dd_row = ttk.Frame(frm)
-        dd_row.grid(row=4, column=1, sticky="we", pady=4, columnspan=2)
+        dd_row.grid(row=5, column=1, sticky="we", pady=4, columnspan=2)
         self.dd_entry = ttk.Entry(dd_row, textvariable=self.download_dir_var, width=60)
         self.dd_entry.pack(side="left", fill="x", expand=True)
         ttk.Button(dd_row, text="浏览...", command=self._browse_dir).pack(side="left", padx=(6, 0))
-
-        # ---- headers（YAML）----
-        ttk.Label(frm, text="headers (YAML 格式的字典)").grid(row=5, column=0, sticky="nw", pady=(10, 4))
-        self.headers_text = ScrolledText(frm, height=10)
-        self.headers_text.grid(row=5, column=1, columnspan=2, sticky="nsew", pady=(10, 4))
-        headers_yaml = yaml.safe_dump(self._cfg.get("headers", {}) or {}, allow_unicode=True, sort_keys=False)
-        self.headers_text.insert("1.0", headers_yaml)
-
-        frm.rowconfigure(5, weight=1)
 
         # ---- 底部按钮 ----
         btns = ttk.Frame(self)
@@ -83,16 +73,8 @@ class ConfigDialog(tk.Toplevel):
         new_cfg["get_timeline_url"] = self.get_timeline_url_var.get().strip()
         new_cfg["cookie"] = self.cookie_var.get()
         new_cfg["download_dir"] = self.download_dir_var.get().strip() or "./downloads"
-
-        # 解析 headers YAML
-        try:
-            headers_obj = yaml.safe_load(self.headers_text.get("1.0", "end")) or {}
-            if not isinstance(headers_obj, dict):
-                raise ValueError("headers 需要是一个字典")
-            new_cfg["headers"] = headers_obj
-        except Exception as e:
-            messagebox.showerror("错误", f"解析 headers 失败：{e}")
-            return
+        headers_obj = new_cfg.setdefault("headers", {})
+        headers_obj["x-xsrf-token"] = self.xsrf_var.get().strip()
 
         # 基本校验
         required = ["base_url", "get_users_url", "get_timeline_url"]
