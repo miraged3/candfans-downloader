@@ -1,3 +1,4 @@
+import http.cookies
 import os.path
 import queue
 import threading
@@ -174,26 +175,56 @@ class DownloaderGUI(tk.Tk):
         from urllib.parse import unquote
 
         def _check_login(window):
+            cookie_dict = {}
             while True:
                 time.sleep(1)
                 try:
-                    cookies = webview.get_cookies("https://candfans.jp")
+                    cookies = window.get_cookies()
                     if not cookies:
                         continue
-                    cookie_str = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
-                    resp = get_user_mine(headers={"Cookie": cookie_str})
-                    if resp.get("data") and resp["data"].get("user"):
-                        user = resp["data"]["user"]
+
+                    # 构造 Cookie 字符串
+                    for c in cookies:
+                        for key, morsel in c.items():
+                            cookie_dict[key] = morsel.value
+                    cookie_str = "; ".join(f"{k}={v}" for k, v in cookie_dict.items())
+
+                    # 提取 XSRF-TOKEN
+                    xsrf = cookie_dict.get("XSRF-TOKEN", "")
+                    xsrf = unquote(xsrf)
+
+                    # 构造 headers（对照 curl）
+                    headers = {
+                        "accept": "application/json",
+                        "accept-language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "priority": "u=1, i",
+                        "referer": "https://candfans.jp/",
+                        "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138", "Google Chrome";v="138"',
+                        "sec-ch-ua-mobile": "?0",
+                        "sec-ch-ua-platform": '"Windows"',
+                        "sec-fetch-dest": "empty",
+                        "sec-fetch-mode": "cors",
+                        "sec-fetch-site": "same-origin",
+                        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+                        "x-xsrf-token": xsrf,
+                        "Cookie": cookie_str,
+                    }
+                    resp = get_user_mine(headers=headers)
+
+                    if resp.get("data") and resp["data"].get("users"):
+                        user = resp["data"]["users"][0]
                         username = user.get("username", "")
-                        xsrf = next((c["value"] for c in cookies if c["name"] == "XSRF-TOKEN"), "")
-                        cfg.setdefault("headers", {})["x-xsrf-token"] = unquote(xsrf)
+
+                        cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
                         cfg["cookie"] = cookie_str
                         save_config(cfg)
+
                         self.after(0, self.username_var.set, username)
-                        webview.destroy_window(window)
+                        window.destroy()
                         break
-                except Exception:
-                    pass
+
+                except Exception as e:
+                    print(e)
 
         window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
         webview.start(_check_login, (window,))
@@ -382,6 +413,7 @@ class DownloaderGUI(tk.Tk):
         try:
             def progress_cb(current, total):
                 self.after(0, self._update_progress, current, total)
+
             download_and_merge(
                 url,
                 os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
@@ -397,6 +429,7 @@ class DownloaderGUI(tk.Tk):
         try:
             def progress_cb(current, total):
                 self.after(0, self._update_progress, current, total)
+
             download_and_merge(
                 url,
                 os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),

@@ -18,10 +18,10 @@ def main() -> None:
         print(f"配置文件格式错误: {e}")
         sys.exit(1)
 
-    if not check_requirements():
-        print("\n请先安装缺少的依赖：")
-        print("pip install -r requirements.txt")
-        sys.exit(1)
+    # if not check_requirements():
+    #     print("\n请先安装缺少的依赖：")
+    #     print("pip install -r requirements.txt")
+    #     sys.exit(1)
 
     app = DownloaderGUI()
     app.mainloop()
