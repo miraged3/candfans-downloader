@@ -1,4 +1,4 @@
-[English](README.md) | [中文](README_zh.md)
+English | [中文](README_zh.md)
 
 # CandFans Downloader
 
@@ -81,10 +81,10 @@ Typical workflow:
 4. **Download** – select desired posts and click *Start Download*. Use *Pause* or *Cancel* as needed. Downloads are
    saved under `download_dir`.
 
-## Programmatic use
+## Future plan
 
-The core download logic lives in `downloader.download_and_merge()` which accepts a media URL and merges `m3u8` segments
-with `ffmpeg`. You may import and use this function in your own scripts.
+- Support downloading individually purchased content
+- Package into a standalone executable
 
 ---
 
