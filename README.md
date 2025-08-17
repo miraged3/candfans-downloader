@@ -1,3 +1,5 @@
+[English](README.md) | [中文](README_zh.md)
+
 # CandFans Downloader
 
 CandFans Downloader is a Python application for archiving content from your [candfans.jp](https://candfans.jp/)
