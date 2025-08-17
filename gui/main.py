@@ -88,7 +88,8 @@ class DownloaderGUI(tk.Tk):
 
         ttk.Label(top_row1, text="月份:").pack(side="left", padx=(12, 4))
         self.month_var = tk.StringVar(value="全部")
-        self.month_combo = ttk.Combobox(top_row1, textvariable=self.month_var, width=12, state="readonly", values=["全部"])
+        self.month_combo = ttk.Combobox(top_row1, textvariable=self.month_var, width=12, state="readonly",
+                                        values=["全部"])
         self.month_combo.pack(side="left")
 
         ttk.Label(top_row1, text="类型:").pack(side="left", padx=(12, 4))
@@ -250,10 +251,14 @@ class DownloaderGUI(tk.Tk):
 
                     except Exception as e:
                         print(e)
+                        break
             finally:
                 # 退出时重置登录状态，避免无法再次登录
                 self._logging_in = False
-                window.destroy()
+                try:
+                    window.destroy()
+                except Exception as e:
+                    print(e)
 
         window = webview.create_window("CandFans 登录", "https://candfans.jp/auth/login")
         webview.start(_check_login, (window,), gui="edgechromium")
