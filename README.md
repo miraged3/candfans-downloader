@@ -54,6 +54,10 @@ If automatic login fails, you can obtain the values manually:
 ![Token location](doc/image1.png)
 ![Cookie location](doc/image2.png)
 
+## High DPI support
+
+The GUI is per-monitor DPI aware on Windows, rendering crisply at 125%, 150% or 200% scaling. On older versions of Windows that lack `SetProcessDpiAwareness` or `SetProcessDPIAware`, the interface may not scale correctly and could appear blurry.
+
 ## Future plans
 
 - Support downloading individually purchased content

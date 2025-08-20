@@ -2,6 +2,7 @@
 
 import sys
 import yaml
+import ctypes
 
 from .main import DownloaderGUI
 from .config_dialog import ConfigDialog
@@ -22,6 +23,15 @@ def main() -> None:
     #     print("\nPlease install missing dependencies:")
     #     print("pip install -r requirements.txt")
     #     sys.exit(1)
+
+    if sys.platform == "win32":
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            try:
+                ctypes.windll.user32.SetProcessDPIAware()
+            except Exception:
+                pass
 
     app = DownloaderGUI()
     app.mainloop()
