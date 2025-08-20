@@ -5,15 +5,6 @@
 CandFans Downloader 是一个用于从你的 [candfans.jp](https://candfans.jp/) 订阅中归档内容的 Python
 应用程序。它提供桌面图形界面，登录你的账户，获取已订阅创作者的帖子，并将视频文件保存到本地。
 
-## 功能
-
-- 内嵌登录窗口自动捕获 Cookie 和 XSRF 令牌，并将其保存到 `config.yaml`
-- 配置对话框可编辑 API 端点、认证头以及下载目录
-- 从你的订阅加载账户列表并获取时间线帖子
-- 按关键字、月份和媒体类型（`mp4` 或 `m3u8`）过滤帖子
-- 批量下载，带进度条、暂停/继续和取消功能
-- 使用 `ffmpeg` 将 `m3u8` 流合并为 MP4 文件
-
 ## 运行环境
 
 - Python 3.8+
@@ -34,14 +25,14 @@ pip install -r requirements.txt
 
 程序首次运行会生成 `config.yaml`。也在 GUI 中打开 **Config** 来填写：
 
-| 字段                     | 说明                     |
-|------------------------|------------------------|
-| `base_url`             | 订阅列表的 API 端点           |
-| `get_users_url`        | 根据 code 获取用户信息的 API 端点 |
-| `get_timeline_url`     | 时间线帖子的 API 端点          |
-| `headers.x-xsrf-token` | 来自 CandFans 的 XSRF 令牌  |
-| `cookie`               | 登录 Cookie              |
-| `download_dir`         | 保存文件的文件夹               |
+| 字段              | 说明                     |
+|-----------------|------------------------|
+| `Base Url`      | 订阅列表的 API 端点           |
+| `Get Users Url` | 根据 code 获取用户信息的 API 端点 |
+| `Timeline Url`  | 时间线帖子的 API 端点          |
+| `Token`         | 来自 CandFans 的 XSRF 令牌  |
+| `Cookie`        | 登录 Cookie              |
+| `Download Path` | 保存文件的文件夹               |
 
 ### 使用
 
