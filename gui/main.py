@@ -26,6 +26,7 @@ from .config_dialog import ConfigDialog
 class DownloaderGUI(tk.Tk):
     def __init__(self):
         super().__init__()
+        dpi = 96
         if sys.platform == "win32":
             try:
                 dpi = ctypes.windll.user32.GetDpiForWindow(self.winfo_id())
@@ -34,7 +35,9 @@ class DownloaderGUI(tk.Tk):
                 pass
         self._logging_in = None
         self.title("CandFans Downloader")
-        self.geometry("1100x700")
+        scale = dpi / 96
+        width, height = int(1100 * scale), int(700 * scale)
+        self.geometry(f"{width}x{height}")
 
         # Data
         self.accounts = []  # [{'user_code','username','user_id'}...]
