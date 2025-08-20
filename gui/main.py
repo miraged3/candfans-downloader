@@ -7,6 +7,8 @@ import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from requests import HTTPError
+
 from api import (
     get_subscription_list,
     parse_subscription_list,
@@ -194,12 +196,12 @@ class DownloaderGUI(tk.Tk):
                 resp = get_user_mine(headers=HEADERS)
                 if resp.get("data") and resp["data"].get("users"):
                     user = resp["data"]["users"][0]
-                    username = user.get("username", "")
+                    username = "Current User: " + user.get("username", "")
             except Exception as e:
                 print(e)
                 username = None
 
-            self.after(0, lambda: self.username_var.set("Current User: " + username or "Not logged in"))
+            self.after(0, lambda: self.username_var.set(username or "Not logged in"))
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -260,9 +262,10 @@ class DownloaderGUI(tk.Tk):
                             self.username_var.set('Current User: ' + self.username)
                             break
 
-                    except Exception as e:
+                    except HTTPError as e:
+                        if e.response is not None and e.response.status_code == 401:
+                            continue
                         print(e)
-                        break
             finally:
                 # Reset login state on exit to allow logging in again
                 self._logging_in = False
