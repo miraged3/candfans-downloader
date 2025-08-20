@@ -5,20 +5,20 @@ from tkinter import ttk, messagebox, filedialog
 
 
 class ConfigDialog(tk.Toplevel):
-    """编辑 config.yaml 的弹窗"""
+    """Dialog for editing ``config.yaml``."""
 
     def __init__(self, parent, cfg_obj: dict, on_save):
         super().__init__(parent)
-        self.title("编辑配置")
+        self.title("Edit Configuration")
         self.transient(parent)
-        self.grab_set()  # 模态
+        self.grab_set()  # modal
         self.resizable(True, True)
         self.on_save = on_save
 
-        # 拷贝一份，避免直接改全局
+        # Make a copy to avoid modifying the global config directly
         self._cfg = copy.deepcopy(cfg_obj or {})
 
-        # ---- 基础字段 ----
+        # ---- Basic fields ----
         frm = ttk.Frame(self)
         frm.pack(fill="both", expand=True, padx=12, pady=12)
 
@@ -49,15 +49,15 @@ class ConfigDialog(tk.Toplevel):
         dd_row.grid(row=5, column=1, sticky="we", pady=4, columnspan=2)
         self.dd_entry = ttk.Entry(dd_row, textvariable=self.download_dir_var, width=60)
         self.dd_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(dd_row, text="浏览...", command=self._browse_dir).pack(side="left", padx=(6, 0))
+        ttk.Button(dd_row, text="Browse...", command=self._browse_dir).pack(side="left", padx=(6, 0))
 
-        # ---- 底部按钮 ----
+        # ---- Bottom buttons ----
         btns = ttk.Frame(self)
         btns.pack(fill="x", padx=12, pady=(0, 12))
-        ttk.Button(btns, text="取消", command=self.destroy).pack(side="right")
-        ttk.Button(btns, text="保存", command=self._save).pack(side="right", padx=(0, 8))
+        ttk.Button(btns, text="Cancel", command=self.destroy).pack(side="right")
+        ttk.Button(btns, text="Save", command=self._save).pack(side="right", padx=(0, 8))
 
-        # 回车保存 / Esc 关闭
+        # Enter to save / Esc to close
         self.bind("<Return>", lambda e: self._save())
         self.bind("<Escape>", lambda e: self.destroy())
 
@@ -71,7 +71,7 @@ class ConfigDialog(tk.Toplevel):
             self.download_dir_var.set(d)
 
     def _save(self):
-        # 收集基础字段
+        # Collect basic fields
         new_cfg = copy.deepcopy(self._cfg)
         new_cfg["base_url"] = self.base_url_var.get().strip()
         new_cfg["get_users_url"] = self.get_users_url_var.get().strip()
@@ -81,17 +81,17 @@ class ConfigDialog(tk.Toplevel):
         headers_obj = new_cfg.setdefault("headers", {})
         headers_obj["x-xsrf-token"] = self.xsrf_var.get().strip()
 
-        # 基本校验
+        # Basic validation
         required = ["base_url", "get_users_url", "get_timeline_url"]
         for k in required:
             if not new_cfg.get(k):
-                messagebox.showerror("错误", f"{k} 不能为空")
+                messagebox.showerror("Error", f"{k} cannot be empty")
                 return
 
-        # 成功：调用回调并关闭
+        # On success: invoke callback and close
         try:
             self.on_save(new_cfg)
         except Exception as e:
-            messagebox.showerror("错误", f"保存配置失败：{e}")
+            messagebox.showerror("Error", f"Failed to save configuration: {e}")
             return
         self.destroy()

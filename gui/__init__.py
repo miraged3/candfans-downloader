@@ -15,11 +15,11 @@ def main() -> None:
     try:
         load_config()
     except yaml.YAMLError as e:
-        print(f"配置文件格式错误: {e}")
+        print(f"Invalid configuration file format: {e}")
         sys.exit(1)
 
     # if not check_requirements():
-    #     print("\n请先安装缺少的依赖：")
+    #     print("\nPlease install missing dependencies:")
     #     print("pip install -r requirements.txt")
     #     sys.exit(1)
 

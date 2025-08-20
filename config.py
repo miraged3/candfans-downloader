@@ -84,7 +84,7 @@ def check_requirements(req_file: str = "requirements.txt") -> bool:
     """
     req_path = Path(req_file)
     if not req_path.exists():
-        print(f"警告：未找到 {req_file}，跳过依赖检查")
+        print(f"Warning: {req_file} not found, skipping dependency check")
         return True
 
     with open(req_path, encoding="utf-8") as f:
@@ -109,7 +109,7 @@ def check_requirements(req_file: str = "requirements.txt") -> bool:
             missing_packages.append(req)
 
     if missing_packages:
-        print("缺少依赖或版本不匹配：")
+        print("Missing or incompatible dependencies:")
         for pkg in missing_packages:
             print(f"  - {pkg}")
         return False
