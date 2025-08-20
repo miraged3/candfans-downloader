@@ -1,36 +1,70 @@
-# Candfans Downloader
-Downloads all the files from a Candfans.com account.
+English | [中文](README_zh.md)
 
-### Usage
-1. Install Python 3.8+
-2. Install the required modules: `pip install -r requirements.txt`
-3. Install ffmpeg, and make sure it's in your PATH. In Windows, you can download it from [here](https://www.gyan.dev/ffmpeg/builds/).
-4. Copy config_demo.py to config.py in project root directory.
-5. Login to [Candfans](https://candfans.jp/mypage) with Chrome, and press F12, navigate to the Network tab, and refresh the page, find the request named `get-user-mine`, right click it, and click Copy as cURL(bash).
-6. Paste the cURL into a text editor, find the content of `x-xsrf-token` and `-b`, then paste them into `x-xsrf-token` and `cookie` in config.py. ![image](/doc/image1.png)![image](/doc/image2.png)
-7. Run `python download.py`
+# CandFans Downloader
 
-### 中文介绍
+CandFans Downloader is a Python application for archiving content from your [candfans.jp](https://candfans.jp/) subscriptions. It provides a desktop GUI to log into your account, fetch posts from subscribed creators, and save video files locally.
 
-用于下载 Candfans.com 订阅的视频
+## Requirements
 
-### 使用方法
+- Python 3.8+
+- Dependencies in `requirements.txt`
+- [FFmpeg](https://ffmpeg.org/) available in your `PATH`
 
-1. 安装 Python 3.8 或以上版本
-2. 安装所需依赖：
+## Installation
 
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. 安装 ffmpeg，并确保已添加到系统 PATH
-   在 Windows 下，可从 [这里](https://www.gyan.dev/ffmpeg/builds/) 下载
-4. 将 `config_demo.py` 复制到项目根目录下，命名为 `config.py`
-5. 在 Chrome 中登录 [Candfans](https://candfans.jp/mypage)，按 F12 打开开发者工具，切换到 Network（网络）面板，刷新页面，找到名为 `get-user-mine` 的请求，右键点击并选择 **Copy as cURL (bash)**
-6. 将复制的 cURL 命令粘贴到文本编辑器中，提取其中的 `x-xsrf-token` 和 `-b`（cookie）字段的内容，分别填入 `config.py` 中的 `x-xsrf-token` 和 `cookie` 配置项，如图所示：
-   ![image](/doc/image1.png)
-   ![image](/doc/image2.png)
-7. 在项目根目录下运行：
+```bash
+git clone https://github.com/miraged3/candfans-downloader
+cd candfans-downloader
+pip install -r requirements.txt
+```
 
-   ```bash
-   python download.py
-   ```
+Ensure `ffmpeg` is installed and configured in your `PATH`.
+
+## Configuration
+
+Running the program for the first time creates `config.yaml`. You can also open **Config** in the GUI to fill in:
+
+| Field | Description |
+|-------|-------------|
+| `Base Url`      | API endpoint for the subscription list |
+| `Get Users Url` | API endpoint to get user info by code |
+| `Timeline Url`  | API endpoint for timeline posts |
+| `Token`         | XSRF token from CandFans |
+| `Cookie`        | Login cookie |
+| `Download Path` | Folder where files are saved |
+
+## Usage
+
+1. Start the program: `python main.py`
+2. Click the login button and sign in to your CandFans account.
+3. After logging in, click `Fetch subs`; the left panel shows all subscribed accounts.
+4. Click `Fetch posts` to retrieve all downloadable posts. Use the filters at the top of the window as needed.
+5. Change the download directory in **Config** if desired.
+6. Select posts and click `Start download`.
+
+### Manual token retrieval
+
+If automatic login fails, you can obtain the values manually:
+
+1. Log in to CandFans using Chrome.
+2. Open Developer Tools (`F12`) → **Network** and refresh the page.
+3. Find the `get-user-mine` request, right-click and choose **Copy as cURL**.
+4. Extract `x-xsrf-token` and the cookie string from the command and paste them into the configuration, then click fetch posts.
+
+![Token location](doc/image1.png)
+![Cookie location](doc/image2.png)
+
+## High DPI support
+
+The GUI is per-monitor DPI aware on Windows, rendering crisply at 125%, 150% or 200% scaling. On older versions of Windows that lack `SetProcessDpiAwareness` or `SetProcessDPIAware`, the interface may not scale correctly and could appear blurry.
+
+## Future plans
+
+- Support downloading individually purchased content
+- Package into a standalone executable
+- Language switching
+
+---
+
+*CandFans Downloader is intended for personal archiving of legally obtained content.*
+
