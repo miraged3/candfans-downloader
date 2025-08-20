@@ -1,5 +1,7 @@
+import ctypes
 import os.path
 import queue
+import sys
 import threading
 import time
 import tkinter as tk
@@ -24,6 +26,12 @@ from .config_dialog import ConfigDialog
 class DownloaderGUI(tk.Tk):
     def __init__(self):
         super().__init__()
+        if sys.platform == "win32":
+            try:
+                dpi = ctypes.windll.user32.GetDpiForWindow(self.winfo_id())
+                self.tk.call("tk", "scaling", dpi / 72)
+            except Exception:
+                pass
         self._logging_in = None
         self.title("CandFans Downloader")
         self.geometry("1100x700")
