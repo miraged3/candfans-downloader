@@ -1,91 +1,64 @@
-English | [Chinese](README_zh.md)
+# CandFans 下载器
 
-# CandFans Downloader
+CandFans Downloader 是一个用于从你的 [candfans.jp](https://candfans.jp/) 订阅中归档内容的 Python 应用程序。它提供桌面图形界面，登录你的账户，获取已订阅创作者的帖子，并将视频文件保存到本地。
 
-CandFans Downloader is a Python application for archiving content from your [candfans.jp](https://candfans.jp/)
-subscriptions. It provides a desktop GUI that logs into your account, fetches posts from subscribed creators, and saves
-video files locally.
-
-## Features
-
-- Embedded login window captures cookies and XSRF token automatically, storing them in `config.yaml`.
-- Configuration dialog to edit API endpoints, authentication headers, and download directory.
-- Load account list from your subscriptions and fetch timeline posts.
-- Filter posts by keyword, month, and media type (`mp4` or `m3u8`).
-- Batch download with progress bar, pause/resume, and cancel support.
-- Merges `m3u8` streams into MP4 files using `ffmpeg`.
-
-## Requirements
+## 运行环境
 
 - Python 3.8+
-- Dependencies from `requirements.txt`
-- [FFmpeg](https://ffmpeg.org/) available in your `PATH`.
+- `requirements.txt` 中的依赖
+- `PATH` 中可用的 [FFmpeg](https://ffmpeg.org/)
 
-## Installation
+## 安装
 
 ```bash
-git clone https://github.com/<repo>/candfans-downloader.git
+git clone https://github.com/miraged3/candfans-downloader
 cd candfans-downloader
-python -m venv venv   # optional
-source venv/bin/activate  # or venv\\Scripts\\activate on Windows
 pip install -r requirements.txt
 ```
 
-Ensure `ffmpeg` is installed and accessible.
+使用前请确保已安装 `ffmpeg` 并配置到 `PATH`
 
-## Configuration
+## 配置
 
-Running the program for the first time creates a `config.yaml`.
-Open **Config** in the GUI to fill in:
+程序首次运行会生成 `config.yaml`，也可以在 GUI 中打开 **Config** 来填写：
 
-| Field                  | Description                             |
-|------------------------|-----------------------------------------|
-| `base_url`             | API endpoint for your subscription list |
-| `get_users_url`        | API endpoint for user info by code      |
-| `get_timeline_url`     | API endpoint for timeline posts         |
-| `headers.x-xsrf-token` | XSRF token from CandFans                |
-| `cookie`               | login cookies                           |
-| `download_dir`         | folder for saved files                  |
+| 字段 | 说明 |
+|---|---|
+| `Base Url` | 订阅列表的 API 端点 |
+| `Get Users Url` | 根据 code 获取用户信息的 API 端点 |
+| `Timeline Url` | 时间线帖子的 API 端点 |
+| `Token` | 来自 CandFans 的 XSRF 令牌 |
+| `Cookie` | 登录 Cookie |
+| `Download Path` | 保存文件的文件夹 |
 
-### Automatic login
+### 使用
 
-Click **Login** in the GUI. A browser window appears; sign in and the application captures cookies and the XSRF token,
-saving them to `config.yaml` automatically.
+1. 启动程序，在终端中执行：`python main.py`
+2. 点击登录按钮，登录 CandFans 账号
+3. 登录成功后，点击 `Fetch subs` 按钮，左边窗口会显示所有订阅的账号
+4. 点击 `Fetch posts` 按钮，会拉取该账号所有可下载的帖子，可在窗口上方按条件筛选
+5. 在配置里可以修改下载目录
+6. 选择帖子并点击 `Start download` 按钮
 
-### Manual token retrieval
+### 手动获取令牌
 
-If automatic login fails, obtain the values manually:
+如果自动登录失败，可手动获取这些值：
 
-1. Log in to CandFans using Chrome.
-2. Open Developer Tools (`F12`) → **Network** and refresh the page.
-3. Locate the `get-user-mine` request, right-click, and choose **Copy as cURL**.
-4. Extract `x-xsrf-token` and the cookie string from the command and paste them into `config.yaml`.
+1. 使用 Chrome 登录 CandFans
+2. 打开开发者工具（`F12`）→ **Network** 并刷新页面
+3. 找到 `get-user-mine` 请求，右键选择 **Copy as cURL**
+4. 从命令中找出 `x-xsrf-token` 和 Cookie 字符串并将相应的值粘贴到配置中，再点击拉取帖子
 
-![Token location](doc/image1.png)
-![Cookie location](doc/image2.png)
+![令牌位置](doc/image1.png)
+![Cookie 位置](doc/image2.png)
 
-## Running
+## 未来计划
 
-Start the GUI:
-
-```bash
-python main.py
-```
-
-Typical workflow:
-
-1. **Login** – capture authentication cookies.
-2. **Load account list** – retrieves all subscribed creators.
-3. **Fetch posts** – select accounts and choose number of pages or fetch all; optional filters for keyword, month, and
-   type.
-4. **Download** – select desired posts and click *Start Download*. Use *Pause* or *Cancel* as needed. Downloads are
-   saved under `download_dir`.
-
-## Future plan
-
-- Support downloading individually purchased content
-- Package into a standalone executable
+- 支持单件购买的内容下载
+- 打包成独立程序
+- 语言切换
 
 ---
 
-*CandFans Downloader is intended for personal archival of legally obtained content.*
+*CandFans Downloader 仅用于对合法获取的内容进行个人归档。*
+
