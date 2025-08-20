@@ -99,7 +99,7 @@ class DownloaderGUI(tk.Tk):
 
         ttk.Label(top_row2, text="Month:").pack(side="left", padx=(12, 4))
         self.month_var = tk.StringVar(value="All")
-        self.month_combo = ttk.Combobox(top_row2, textvariable=self.month_var, width=12, state="readonly",
+        self.month_combo = ttk.Combobox(top_row2, textvariable=self.month_var, width=8, state="readonly",
                                         values=["All"])
         self.month_combo.pack(side="left")
 
