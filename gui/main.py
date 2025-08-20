@@ -59,49 +59,49 @@ class DownloaderGUI(tk.Tk):
         top_row2 = ttk.Frame(top)
         top_row2.pack(fill="x", pady=(4, 0))
 
-        self.btn_login = ttk.Button(top_row2, text="Login", command=self.on_login)
+        self.btn_login = ttk.Button(top_row1, text="Login", command=self.on_login)
         self.btn_login.pack(side="left")
 
-        self.btn_config = ttk.Button(top_row2, text="Config", command=self.open_config)
+        self.btn_config = ttk.Button(top_row1, text="Config", command=self.open_config)
         self.btn_config.pack(side="left", padx=(8, 0))
 
         self.username_var = tk.StringVar(value="Not logged in")
         self.lbl_username = ttk.Label(top_row1, textvariable=self.username_var)
         self.lbl_username.pack(side="right", padx=(0, 8))
 
-        self.btn_load_accounts = ttk.Button(top_row1, text="Load accounts", command=self.on_load_accounts)
-        self.btn_load_accounts.pack(side="left")
+        self.btn_load_accounts = ttk.Button(top_row1, text="Fetch subs", command=self.on_load_accounts)
+        self.btn_load_accounts.pack(side="left", padx=(8, 0))
 
-        ttk.Label(top_row1, text="Pages per account:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row2, text="Pages per account:").pack(side="left", padx=(12, 4))
         self.pages_var = tk.IntVar(value=3)
-        self.pages_spin = ttk.Spinbox(top_row1, from_=1, to=999, textvariable=self.pages_var, width=5)
+        self.pages_spin = ttk.Spinbox(top_row2, from_=1, to=999, textvariable=self.pages_var, width=5)
         self.pages_spin.pack(side="left")
 
         self.all_pages_var = tk.BooleanVar(value=False)
-        self.chk_all_pages = ttk.Checkbutton(top_row1, text="Fetch all pages", variable=self.all_pages_var)
+        self.chk_all_pages = ttk.Checkbutton(top_row2, text="Fetch all pages", variable=self.all_pages_var)
         self.chk_all_pages.pack(side="left", padx=(8, 0))
 
-        ttk.Label(top_row1, text="Keyword:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row2, text="Keyword:").pack(side="left", padx=(12, 4))
         self.keyword_var = tk.StringVar()
-        self.keyword_entry = ttk.Entry(top_row1, textvariable=self.keyword_var, width=18)
+        self.keyword_entry = ttk.Entry(top_row2, textvariable=self.keyword_var, width=18)
         self.keyword_entry.pack(side="left")
 
-        ttk.Label(top_row1, text="Month:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row2, text="Month:").pack(side="left", padx=(12, 4))
         self.month_var = tk.StringVar(value="All")
-        self.month_combo = ttk.Combobox(top_row1, textvariable=self.month_var, width=12, state="readonly",
+        self.month_combo = ttk.Combobox(top_row2, textvariable=self.month_var, width=12, state="readonly",
                                         values=["All"])
         self.month_combo.pack(side="left")
 
-        ttk.Label(top_row1, text="Type:").pack(side="left", padx=(12, 4))
+        ttk.Label(top_row2, text="Type:").pack(side="left", padx=(12, 4))
         self.type_var = tk.StringVar(value="All")
-        self.type_combo = ttk.Combobox(top_row1, textvariable=self.type_var, width=8, state="readonly",
+        self.type_combo = ttk.Combobox(top_row2, textvariable=self.type_var, width=8, state="readonly",
                                        values=["All", "mp4", "m3u8"])
         self.type_combo.pack(side="left")
 
         self.btn_fetch_posts = ttk.Button(top_row1, text="Fetch posts", command=self.on_fetch_posts)
         self.btn_fetch_posts.pack(side="left", padx=(12, 0))
 
-        self.btn_apply_filter = ttk.Button(top_row1, text="Apply filter", command=self.apply_filter)
+        self.btn_apply_filter = ttk.Button(top_row2, text="Apply filter", command=self.apply_filter)
         self.btn_apply_filter.pack(side="left", padx=(8, 0))
 
         # Middle: left-right layout
@@ -137,7 +137,7 @@ class DownloaderGUI(tk.Tk):
         ttk.Button(btns, text="Select visible", command=self.select_all_visible).pack(side="left")
         ttk.Button(btns, text="Clear selection", command=self.clear_selection).pack(side="left", padx=(8, 0))
         self.btn_download = ttk.Button(btns, text="Start download", command=self.on_download)
-        self.btn_download.pack(side="right")
+        self.btn_download.pack(side="right", padx=(8, 0))
         self.btn_pause = ttk.Button(btns, text="Pause", command=self.on_pause_resume, state="disabled")
         self.btn_pause.pack(side="right", padx=(8, 0))
 
@@ -188,7 +188,7 @@ class DownloaderGUI(tk.Tk):
                 print(e)
                 username = None
 
-            self.after(0, lambda: self.username_var.set(username or "Not logged in"))
+            self.after(0, lambda: self.username_var.set("Current User: " + username or "Not logged in"))
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -246,7 +246,7 @@ class DownloaderGUI(tk.Tk):
                             cfg["cookie"] = cookie_str
                             save_config(cfg.copy())
                             window.destroy()
-                            self.username_var.set(self.username)
+                            self.username_var.set('Current User: ' + self.username)
                             break
 
                     except Exception as e:
@@ -266,7 +266,8 @@ class DownloaderGUI(tk.Tk):
     def open_config(self):
         # Allow viewing/modifying during downloads but warn the user
         if self.downloading:
-            messagebox.showinfo("Info", "Downloads are in progress. Changing the configuration may affect subsequent requests. Pause or cancel before modifying.")
+            messagebox.showinfo("Info",
+                                "Downloads are in progress. Changing the configuration may affect subsequent requests. Pause or cancel before modifying.")
         # Open dialog
         ConfigDialog(self, cfg, on_save=self.on_config_saved)
 
