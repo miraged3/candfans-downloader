@@ -35,12 +35,23 @@ Running the program for the first time creates `config.yaml`. You can also open 
 
 ## Usage
 
+### Main GUI
+
 1. Start the program: `python main.py`
 2. Click the login button and sign in to your CandFans account.
-3. After logging in, click `Fetch subs`; the left panel shows all subscribed accounts.
-4. Click `Fetch posts` to retrieve all downloadable posts. Use the filters at the top of the window as needed.
-5. Change the download directory in **Config** if desired.
-6. Select posts and click `Start download`.
+3. After logging in, choose between two tabs:
+
+#### Subscription Timeline Tab
+
+- Click `Fetch subs`; the left panel shows all subscribed accounts.
+- Click `Fetch posts` to retrieve all downloadable posts. Use the filters at the top of the window as needed.
+- Select posts and click `Start download`.
+
+#### Purchased Contents Tab
+
+- Click `Fetch purchased` to load all your purchased contents.
+- Use filters to narrow down by keyword or purchase month.
+- Select contents and click `Start download`.
 
 ### Manual token retrieval
 
@@ -58,13 +69,20 @@ If automatic login fails, you can obtain the values manually:
 
 The GUI is per-monitor DPI aware on Windows, rendering crisply at 125%, 150% or 200% scaling. On older versions of Windows that lack `SetProcessDpiAwareness` or `SetProcessDPIAware`, the interface may not scale correctly and could appear blurry.
 
+## Features
+
+- **Subscription Timeline Downloads**: Download content from your subscribed creators
+- **Purchased Content Downloads**: Download individually purchased content with filtering by keyword and month
+- **GUI Interface**: User-friendly desktop application with tabbed interface
+- **Filtering Options**: Filter content by keyword, month, and file type
+- **Progress Tracking**: Real-time download progress with pause/resume functionality
+- **Automatic Organization**: Content is organized by creator and post ID
+
 ## Future plans
 
-- Support downloading individually purchased content
 - Package into a standalone executable
 - Language switching
 
 ---
 
 *CandFans Downloader is intended for personal archiving of legally obtained content.*
-

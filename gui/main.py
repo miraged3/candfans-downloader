@@ -15,6 +15,8 @@ from api import (
     get_timeline,
     get_user_info_by_code,
     get_user_mine,
+    get_purchased_contents,
+    parse_purchased_contents,
 )
 from config import (
     cfg,
@@ -43,14 +45,17 @@ class DownloaderGUI(tk.Tk):
 
         # Data
         self.accounts = []  # [{'user_code','username','user_id'}...]
-        self.posts = []  # [(acc_dict, post_dict, url_type, url), ...] currently displayed
+        # [(acc_dict, post_dict, url_type, url), ...] currently displayed
+        self.posts = []
         self.all_posts_raw = {}  # user_code -> [post_dict...]
+        self.purchased_contents = []  # List of purchased content items
         self.log_queue = queue.Queue()
         self.downloading = False
         self.pause_event = threading.Event()
         self.pause_event.set()  # start in running state
         self.cancel_event = threading.Event()
-        self.current_proc = None  # current ffmpeg process (Popen), terminated on cancel
+        # current ffmpeg process (Popen), terminated on cancel
+        self.current_proc = None
         self.username = ""
 
         # UI
@@ -62,63 +67,10 @@ class DownloaderGUI(tk.Tk):
         self.after(100, self._flush_logs)
 
     # ---------- UI ----------
-    def _build_ui(self):
-        # Top controls
-        top = ttk.Frame(self)
-        top.pack(fill="x", padx=10, pady=8)
-
-        top_row1 = ttk.Frame(top)
-        top_row1.pack(fill="x")
-        top_row2 = ttk.Frame(top)
-        top_row2.pack(fill="x", pady=(4, 0))
-
-        self.btn_login = ttk.Button(top_row1, text="Login", command=self.on_login)
-        self.btn_login.pack(side="left")
-
-        self.btn_config = ttk.Button(top_row1, text="Config", command=self.open_config)
-        self.btn_config.pack(side="left", padx=(8, 0))
-
-        self.username_var = tk.StringVar(value="Not logged in")
-        self.lbl_username = ttk.Label(top_row1, textvariable=self.username_var)
-        self.lbl_username.pack(side="right", padx=(0, 8))
-
-        self.btn_load_accounts = ttk.Button(top_row1, text="Fetch subs", command=self.on_load_accounts)
-        self.btn_load_accounts.pack(side="left", padx=(8, 0))
-
-        ttk.Label(top_row2, text="Pages per account:").pack(side="left", padx=(12, 4))
-        self.pages_var = tk.IntVar(value=3)
-        self.pages_spin = ttk.Spinbox(top_row2, from_=1, to=999, textvariable=self.pages_var, width=5)
-        self.pages_spin.pack(side="left")
-
-        self.all_pages_var = tk.BooleanVar(value=False)
-        self.chk_all_pages = ttk.Checkbutton(top_row2, text="Fetch all pages", variable=self.all_pages_var)
-        self.chk_all_pages.pack(side="left", padx=(8, 0))
-
-        ttk.Label(top_row2, text="Keyword:").pack(side="left", padx=(12, 4))
-        self.keyword_var = tk.StringVar()
-        self.keyword_entry = ttk.Entry(top_row2, textvariable=self.keyword_var, width=18)
-        self.keyword_entry.pack(side="left")
-
-        ttk.Label(top_row2, text="Month:").pack(side="left", padx=(12, 4))
-        self.month_var = tk.StringVar(value="All")
-        self.month_combo = ttk.Combobox(top_row2, textvariable=self.month_var, width=8, state="readonly",
-                                        values=["All"])
-        self.month_combo.pack(side="left")
-
-        ttk.Label(top_row2, text="Type:").pack(side="left", padx=(12, 4))
-        self.type_var = tk.StringVar(value="All")
-        self.type_combo = ttk.Combobox(top_row2, textvariable=self.type_var, width=8, state="readonly",
-                                       values=["All", "mp4", "m3u8"])
-        self.type_combo.pack(side="left")
-
-        self.btn_fetch_posts = ttk.Button(top_row1, text="Fetch posts", command=self.on_fetch_posts)
-        self.btn_fetch_posts.pack(side="left", padx=(12, 0))
-
-        self.btn_apply_filter = ttk.Button(top_row2, text="Apply filter", command=self.apply_filter)
-        self.btn_apply_filter.pack(side="left", padx=(8, 0))
-
-        # Middle: left-right layout
-        mid = ttk.Panedwindow(self, orient="horizontal")
+    def _build_subscription_tab(self):
+        """Build the subscription timeline tab."""
+        # Left-right layout
+        mid = ttk.Panedwindow(self.sub_frame, orient="horizontal")
         mid.pack(fill="both", expand=True, padx=10, pady=8)
 
         # Left: account list
@@ -132,7 +84,8 @@ class DownloaderGUI(tk.Tk):
         mid.add(right, weight=3)
 
         cols = ("account", "month", "title", "type", "post_id")
-        self.tree = ttk.Treeview(right, columns=cols, show="headings", selectmode="extended")
+        self.tree = ttk.Treeview(
+            right, columns=cols, show="headings", selectmode="extended")
         self.tree.heading("account", text="Account")
         self.tree.heading("month", text="Month")
         self.tree.heading("title", text="Title")
@@ -147,15 +100,160 @@ class DownloaderGUI(tk.Tk):
 
         btns = ttk.Frame(right)
         btns.pack(fill="x", padx=8, pady=8)
-        ttk.Button(btns, text="Select visible", command=self.select_all_visible).pack(side="left")
-        ttk.Button(btns, text="Clear selection", command=self.clear_selection).pack(side="left", padx=(8, 0))
-        self.btn_download = ttk.Button(btns, text="Start download", command=self.on_download)
+        ttk.Button(btns, text="Select visible",
+                   command=self.select_all_visible).pack(side="left")
+        ttk.Button(btns, text="Clear selection", command=self.clear_selection).pack(
+            side="left", padx=(8, 0))
+        self.btn_download = ttk.Button(
+            btns, text="Start download", command=self.on_download)
         self.btn_download.pack(side="right", padx=(8, 0))
-        self.btn_pause = ttk.Button(btns, text="Pause", command=self.on_pause_resume, state="disabled")
+        self.btn_pause = ttk.Button(
+            btns, text="Pause", command=self.on_pause_resume, state="disabled")
         self.btn_pause.pack(side="right", padx=(8, 0))
-
-        self.btn_cancel = ttk.Button(btns, text="Cancel", command=self.on_cancel, state="disabled")
+        self.btn_cancel = ttk.Button(
+            btns, text="Cancel", command=self.on_cancel, state="disabled")
         self.btn_cancel.pack(side="right", padx=(8, 0))
+
+    def _build_purchased_tab(self):
+        """Build the purchased contents tab."""
+        # Top controls for purchased tab
+        top_purchased = ttk.Frame(self.purchased_frame)
+        top_purchased.pack(fill="x", padx=10, pady=8)
+
+        ttk.Label(top_purchased, text="Keyword:").pack(
+            side="left", padx=(0, 4))
+        self.purchased_keyword_var = tk.StringVar()
+        ttk.Entry(top_purchased, textvariable=self.purchased_keyword_var,
+                  width=18).pack(side="left")
+
+        ttk.Label(top_purchased, text="Month:").pack(side="left", padx=(12, 4))
+        self.purchased_month_var = tk.StringVar(value="All")
+        self.purchased_month_combo = ttk.Combobox(top_purchased, textvariable=self.purchased_month_var,
+                                                  width=12, state="readonly", values=["All"])
+        self.purchased_month_combo.pack(side="left")
+
+        self.btn_fetch_purchased = ttk.Button(top_purchased, text="Fetch purchased",
+                                              command=self.on_fetch_purchased)
+        self.btn_fetch_purchased.pack(side="left", padx=(12, 0))
+
+        self.btn_apply_purchased_filter = ttk.Button(top_purchased, text="Apply filter",
+                                                     command=self.apply_purchased_filter)
+        self.btn_apply_purchased_filter.pack(side="left", padx=(8, 0))
+
+        # Content table for purchased items
+        content_frame = ttk.Labelframe(
+            self.purchased_frame, text="Purchased Contents (Ctrl/Shift to multi-select)")
+        content_frame.pack(fill="both", expand=True, padx=10, pady=8)
+
+        purchased_cols = ("username", "purchase_month",
+                          "title", "price", "post_id")
+        self.purchased_tree = ttk.Treeview(
+            content_frame, columns=purchased_cols, show="headings", selectmode="extended")
+        self.purchased_tree.heading("username", text="Creator")
+        self.purchased_tree.heading("purchase_month", text="Purchase Month")
+        self.purchased_tree.heading("title", text="Title")
+        self.purchased_tree.heading("price", text="Price")
+        self.purchased_tree.heading("post_id", text="PostID")
+        self.purchased_tree.column("username", width=160, anchor="w")
+        self.purchased_tree.column("purchase_month", width=120, anchor="w")
+        self.purchased_tree.column("title", width=400, anchor="w")
+        self.purchased_tree.column("price", width=80, anchor="center")
+        self.purchased_tree.column("post_id", width=120, anchor="center")
+        self.purchased_tree.pack(fill="both", expand=True, padx=8, pady=(8, 0))
+
+        purchased_btns = ttk.Frame(content_frame)
+        purchased_btns.pack(fill="x", padx=8, pady=8)
+        ttk.Button(purchased_btns, text="Select visible",
+                   command=self.select_all_purchased_visible).pack(side="left")
+        ttk.Button(purchased_btns, text="Clear selection",
+                   command=self.clear_purchased_selection).pack(side="left", padx=(8, 0))
+        self.btn_download_purchased = ttk.Button(
+            purchased_btns, text="Start download", command=self.on_download_purchased)
+        self.btn_download_purchased.pack(side="right", padx=(8, 0))
+        self.btn_pause_purchased = ttk.Button(
+            purchased_btns, text="Pause", command=self.on_pause_resume, state="disabled")
+        self.btn_pause_purchased.pack(side="right", padx=(8, 0))
+        self.btn_cancel_purchased = ttk.Button(
+            purchased_btns, text="Cancel", command=self.on_cancel, state="disabled")
+        self.btn_cancel_purchased.pack(side="right", padx=(8, 0))
+
+    def _build_ui(self):
+        # Top controls
+        top = ttk.Frame(self)
+        top.pack(fill="x", padx=10, pady=8)
+
+        top_row1 = ttk.Frame(top)
+        top_row1.pack(fill="x")
+        top_row2 = ttk.Frame(top)
+        top_row2.pack(fill="x", pady=(4, 0))
+
+        self.btn_login = ttk.Button(
+            top_row1, text="Login", command=self.on_login)
+        self.btn_login.pack(side="left")
+
+        self.btn_config = ttk.Button(
+            top_row1, text="Config", command=self.open_config)
+        self.btn_config.pack(side="left", padx=(8, 0))
+
+        self.username_var = tk.StringVar(value="Not logged in")
+        self.lbl_username = ttk.Label(top_row1, textvariable=self.username_var)
+        self.lbl_username.pack(side="right", padx=(0, 8))
+
+        self.btn_load_accounts = ttk.Button(
+            top_row1, text="Fetch subs", command=self.on_load_accounts)
+        self.btn_load_accounts.pack(side="left", padx=(8, 0))
+
+        ttk.Label(top_row2, text="Pages per account:").pack(
+            side="left", padx=(12, 4))
+        self.pages_var = tk.IntVar(value=3)
+        self.pages_spin = ttk.Spinbox(
+            top_row2, from_=1, to=999, textvariable=self.pages_var, width=5)
+        self.pages_spin.pack(side="left")
+
+        self.all_pages_var = tk.BooleanVar(value=False)
+        self.chk_all_pages = ttk.Checkbutton(
+            top_row2, text="Fetch all pages", variable=self.all_pages_var)
+        self.chk_all_pages.pack(side="left", padx=(8, 0))
+
+        ttk.Label(top_row2, text="Keyword:").pack(side="left", padx=(12, 4))
+        self.keyword_var = tk.StringVar()
+        self.keyword_entry = ttk.Entry(
+            top_row2, textvariable=self.keyword_var, width=18)
+        self.keyword_entry.pack(side="left")
+
+        ttk.Label(top_row2, text="Month:").pack(side="left", padx=(12, 4))
+        self.month_var = tk.StringVar(value="All")
+        self.month_combo = ttk.Combobox(top_row2, textvariable=self.month_var, width=8, state="readonly",
+                                        values=["All"])
+        self.month_combo.pack(side="left")
+
+        ttk.Label(top_row2, text="Type:").pack(side="left", padx=(12, 4))
+        self.type_var = tk.StringVar(value="All")
+        self.type_combo = ttk.Combobox(top_row2, textvariable=self.type_var, width=8, state="readonly",
+                                       values=["All", "mp4", "m3u8"])
+        self.type_combo.pack(side="left")
+
+        self.btn_fetch_posts = ttk.Button(
+            top_row1, text="Fetch posts", command=self.on_fetch_posts)
+        self.btn_fetch_posts.pack(side="left", padx=(12, 0))
+
+        self.btn_apply_filter = ttk.Button(
+            top_row2, text="Apply filter", command=self.apply_filter)
+        self.btn_apply_filter.pack(side="left", padx=(8, 0))
+
+        # Middle: tab notebook
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill="both", expand=True, padx=10, pady=8)
+
+        # Tab 1: Subscription Timeline
+        self.sub_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.sub_frame, text="Subscription Timeline")
+        self._build_subscription_tab()
+
+        # Tab 2: Purchased Contents
+        self.purchased_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.purchased_frame, text="Purchased Contents")
+        self._build_purchased_tab()
 
         # Bottom log
         logf = ttk.Labelframe(self, text="Log")
@@ -163,7 +261,8 @@ class DownloaderGUI(tk.Tk):
         self.log_text = tk.Text(logf, height=10)
         self.log_text.pack(fill="both", expand=True, padx=8, pady=(8, 4))
         self.progress_var = tk.DoubleVar(value=0)
-        self.progress_bar = ttk.Progressbar(logf, variable=self.progress_var, mode="determinate")
+        self.progress_bar = ttk.Progressbar(
+            logf, variable=self.progress_var, mode="determinate")
         self.progress_bar.pack(fill="x", padx=8, pady=(0, 8))
 
     # ---------- Logging ----------
@@ -192,6 +291,7 @@ class DownloaderGUI(tk.Tk):
         self.username_var.set("Trying to log in")
 
         def task():
+            username = None
             try:
                 resp = get_user_mine(headers=HEADERS)
                 if resp.get("data") and resp["data"].get("users"):
@@ -199,9 +299,9 @@ class DownloaderGUI(tk.Tk):
                     username = "Current User: " + user.get("username", "")
             except Exception as e:
                 print(e)
-                username = None
 
-            self.after(0, lambda: self.username_var.set(username or "Not logged in"))
+            self.after(0, lambda: self.username_var.set(
+                username or "Not logged in"))
 
         threading.Thread(target=task, daemon=True).start()
 
@@ -228,7 +328,8 @@ class DownloaderGUI(tk.Tk):
                         for c in cookies:
                             for key, morsel in c.items():
                                 cookie_dict[key] = morsel.value
-                        cookie_str = "; ".join(f"{k}={v}" for k, v in cookie_dict.items())
+                        cookie_str = "; ".join(
+                            f"{k}={v}" for k, v in cookie_dict.items())
 
                         # Extract XSRF-TOKEN
                         xsrf = cookie_dict.get("XSRF-TOKEN", "")
@@ -255,11 +356,13 @@ class DownloaderGUI(tk.Tk):
                         if resp.get("data") and resp["data"].get("users"):
                             user = resp["data"]["users"][0]
                             self.username = user.get("username", "")
-                            cfg.setdefault("headers", {})["x-xsrf-token"] = xsrf
+                            cfg.setdefault("headers", {})[
+                                "x-xsrf-token"] = xsrf
                             cfg["cookie"] = cookie_str
                             save_config(cfg.copy())
                             window.destroy()
-                            self.username_var.set('Current User: ' + self.username)
+                            self.username_var.set(
+                                'Current User: ' + self.username)
                             break
 
                     except HTTPError as e:
@@ -274,7 +377,8 @@ class DownloaderGUI(tk.Tk):
                 except Exception as e:
                     print(e)
 
-        window = webview.create_window("CandFans Login", "https://candfans.jp/auth/login")
+        window = webview.create_window(
+            "CandFans Login", "https://candfans.jp/auth/login")
         webview.start(_check_login, (window,), gui="edgechromium")
 
     def open_config(self):
@@ -289,6 +393,180 @@ class DownloaderGUI(tk.Tk):
         """Update configuration after dialog save and persist to disk"""
         save_config(new_cfg)  # write back config.yaml and refresh header
         self._log("[Config] Saved and applied.")
+
+    # ---------- Purchased Contents Events ----------
+    def on_fetch_purchased(self):
+        """Fetch purchased contents from API."""
+        def worker():
+            try:
+                self._log("Fetching purchased contents...")
+                resp = get_purchased_contents()
+                contents = parse_purchased_contents(resp)
+                self.purchased_contents = contents
+                self._log(f"Fetched {len(contents)} purchased contents")
+
+                # Update month filter options
+                months = set()
+                for content in contents:
+                    month = content.get("purchase_month", "")
+                    if month:
+                        months.add(month)
+                months_list = ["All"] + sorted(months, reverse=True)
+                self.purchased_month_combo.config(values=months_list)
+
+            except Exception as e:
+                self._log(f"[Error] Failed to fetch purchased contents: {e}")
+                return
+            finally:
+                self.btn_fetch_purchased.config(state="normal")
+
+            self.apply_purchased_filter()
+
+        self.btn_fetch_purchased.config(state="disabled")
+        threading.Thread(target=worker, daemon=True).start()
+
+    def apply_purchased_filter(self):
+        """Apply filters to purchased contents and update the tree."""
+        # Clear table
+        for row in self.purchased_tree.get_children():
+            self.purchased_tree.delete(row)
+
+        keyword = self.purchased_keyword_var.get().strip().lower()
+        month_filter = self.purchased_month_var.get()
+
+        # Apply filters and populate tree
+        for content in self.purchased_contents:
+            # Filter by keyword
+            if keyword and keyword not in content.get("title", "").lower():
+                continue
+
+            # Filter by month
+            if month_filter != "All" and content.get("purchase_month", "") != month_filter:
+                continue
+
+            # Only show content with attachments (downloadable)
+            if not content.get("attachments"):
+                continue
+
+            username = content.get("username", "Unknown")
+            purchase_month = content.get("purchase_month", "")
+            title = content.get("title", "")
+            price = content.get("price", 0)
+            post_id = content.get("post_id", "")
+
+            self.purchased_tree.insert("", "end", values=(
+                username, purchase_month, title, f"¥{price}", post_id))
+
+    def select_all_purchased_visible(self):
+        """Select all visible purchased contents."""
+        self.purchased_tree.selection_set(self.purchased_tree.get_children())
+
+    def clear_purchased_selection(self):
+        """Clear purchased contents selection."""
+        self.purchased_tree.selection_clear()
+
+    def on_download_purchased(self):
+        """Start downloading selected purchased contents."""
+        selected_items = self.purchased_tree.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Please select items to download")
+            return
+
+        # Extract selected content information
+        tasks = []
+        for item in selected_items:
+            vals = self.purchased_tree.item(item, "values")
+            username, purchase_month, title, price, post_id = vals
+
+            # Find the full content data
+            content = next((c for c in self.purchased_contents if str(
+                c.get("post_id")) == post_id), None)
+            if content:
+                tasks.append(content)
+
+        if not tasks:
+            messagebox.showerror("Error", "No valid items selected")
+            return
+
+        self.downloading = True
+        self.btn_download_purchased.config(state="disabled")
+        self.btn_pause_purchased.config(state="normal")
+        self.btn_cancel_purchased.config(state="normal")
+
+        self.cancel_event.clear()
+        threading.Thread(target=self._download_purchased_worker,
+                         args=(tasks,), daemon=True).start()
+
+    def _download_purchased_worker(self, tasks):
+        """Worker thread for downloading purchased contents."""
+        from downloader import download_and_merge, sanitize_filename
+
+        for i, content in enumerate(tasks):
+            if self.cancel_event.is_set():
+                self._log("[Status] Cancelled")
+                break
+
+            title = content.get(
+                "title", f"content_{content.get('post_id', 'unknown')}")
+            username = content.get("username", "unknown_user")
+            post_id = str(content.get("post_id", "unknown"))
+
+            self._log(
+                f"[{i+1}/{len(tasks)}] Downloading: {username} / {title}")
+
+            # Create directory path
+            download_dir = cfg.get("download_dir") or "downloads"
+            user_dir = os.path.join(download_dir, sanitize_filename(username))
+            content_dir = os.path.join(
+                user_dir, f"{post_id}-{sanitize_filename(title)}")
+
+            # Download all attachments
+            attachments = content.get("attachments", [])
+            for j, attachment in enumerate(attachments):
+                if self.cancel_event.is_set():
+                    break
+
+                url = attachment.get("default")
+                if not url:
+                    continue
+
+                # Create filename for this attachment
+                if len(attachments) > 1:
+                    output_name = f"{sanitize_filename(title)}_{j+1}"
+                else:
+                    output_name = sanitize_filename(title)
+
+                try:
+                    def progress_cb(current, total):
+                        progress = (i + (j + current / (total or 1)
+                                         ) / len(attachments)) / len(tasks)
+                        self.after(0, self._update_progress,
+                                   int(progress * 1000), 1000)
+
+                    url_type = "m3u8" if url.endswith(".m3u8") else "mp4"
+
+                    download_and_merge(
+                        url,
+                        content_dir,
+                        output_name,
+                        url_type=url_type,
+                        log=self._log,
+                        pause_event=self.pause_event,
+                        cancel_event=self.cancel_event,
+                        on_ffmpeg=lambda p: setattr(self, 'current_proc', p),
+                        progress_cb=progress_cb,
+                    )
+                    self._log(f"    Downloaded: {output_name}")
+
+                except Exception as e:
+                    self._log(f"    [Failed] {output_name}: {e}")
+                    continue
+
+        self._log("[Status] Downloaded purchased contents")
+        self.downloading = False
+        self.btn_download_purchased.config(state="normal")
+        self.btn_pause_purchased.config(state="disabled", text="Pause")
+        self.btn_cancel_purchased.config(state="disabled")
 
     # ---------- Events ----------
     def on_load_accounts(self):
@@ -316,7 +594,8 @@ class DownloaderGUI(tk.Tk):
             # Refresh UI
             self.acc_list.delete(0, "end")
             for acc in accounts:
-                self.acc_list.insert("end", f"{acc['username']} ({acc['user_code']})")
+                self.acc_list.insert(
+                    "end", f"{acc['username']} ({acc['user_code']})")
 
         self.btn_load_accounts.config(state="disabled")
         threading.Thread(target=worker, daemon=True).start()
@@ -338,7 +617,8 @@ class DownloaderGUI(tk.Tk):
                 if filter_type == "All":
                     filter_type = None
                 for acc in selected_accounts:
-                    self._log(f"Loading posts for account {acc['username']}...")
+                    self._log(
+                        f"Loading posts for account {acc['username']}...")
                     posts = []
                     page = 1
                     while True:
@@ -362,7 +642,8 @@ class DownloaderGUI(tk.Tk):
                         if keyword and keyword not in post.get("title", ""):
                             continue
                         for url in urls:
-                            url_type = "m3u8" if url.endswith(".m3u8") else "mp4"
+                            url_type = "m3u8" if url.endswith(
+                                ".m3u8") else "mp4"
                             self.posts.append((acc, post, url_type, url))
                 self._log(f"Finished fetching, {len(self.posts)} items")
             except Exception as e:
@@ -422,7 +703,8 @@ class DownloaderGUI(tk.Tk):
             vals = self.tree.item(item, "values")
             acc_name, month, title, url_type, post_id = vals
             acc = next(a for a in self.accounts if a["username"] == acc_name)
-            post = next(p for p in self.all_posts_raw[acc["user_code"]] if str(p.get("post_id")) == post_id)
+            post = next(p for p in self.all_posts_raw[acc["user_code"]] if str(
+                p.get("post_id")) == post_id)
             tasks.append((acc, post, url_type, title))
 
         self.downloading = True
@@ -431,7 +713,8 @@ class DownloaderGUI(tk.Tk):
         self.btn_cancel.config(state="normal")
 
         self.cancel_event.clear()
-        threading.Thread(target=self._download_worker, args=(tasks,), daemon=True).start()
+        threading.Thread(target=self._download_worker,
+                         args=(tasks,), daemon=True).start()
 
     def _download_worker(self, tasks):
         for acc, post, url_type, title in tasks:
@@ -464,7 +747,8 @@ class DownloaderGUI(tk.Tk):
 
             download_and_merge(
                 url,
-                os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                os.path.join(cfg.get("download_dir") or "downloads",
+                             acc["username"], id + "-" + title),
                 title,
                 progress_cb=progress_cb,
             )
@@ -480,7 +764,8 @@ class DownloaderGUI(tk.Tk):
 
             download_and_merge(
                 url,
-                os.path.join(cfg.get("download_dir"), acc["username"], id + "-" + title),
+                os.path.join(cfg.get("download_dir") or "downloads",
+                             acc["username"], id + "-" + title),
                 title,
                 progress_cb=progress_cb,
             )
@@ -513,4 +798,5 @@ class DownloaderGUI(tk.Tk):
             try:
                 self.current_proc.terminate()
             except (OSError, ValueError) as e:
-                self._log(f"[Warning] Exception while terminating process: {e}")
+                self._log(
+                    f"[Warning] Exception while terminating process: {e}")
