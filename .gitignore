@@ -1,3 +1,5 @@
 config.yaml
 .idea/
 downloads
+.venv
+__pycache__
