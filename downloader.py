@@ -11,6 +11,7 @@ from tqdm import tqdm
 from network import safe_get
 from config import HEADERS
 from api import get_purchased_contents, parse_purchased_contents
+from app_log import log as app_log
 
 ffmpeg_path = shutil.which("ffmpeg")
 if ffmpeg_path is None:
@@ -37,7 +38,7 @@ def _download_ts_segment(ts_url, ts_path, idx, total, log, pause_event, cancel_e
         if log:
             log(msg)
         else:
-            print(msg)
+            app_log(msg)
 
     def _wait_if_paused():
         if pause_event is not None:
@@ -109,7 +110,7 @@ def download_and_merge(
         if log:
             log(msg)
         else:
-            print(msg)
+            app_log(msg)
 
     def _wait_if_paused():
         if pause_event is not None:
@@ -372,7 +373,7 @@ def download_purchased_contents(
         if log:
             log(msg)
         else:
-            print(msg)
+            app_log(msg)
 
     def _should_cancel():
         return cancel_event is not None and cancel_event.is_set()

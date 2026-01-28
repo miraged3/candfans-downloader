@@ -4,6 +4,8 @@ from pathlib import Path
 
 import yaml
 
+from app_log import log
+
 # Global configuration and headers
 cfg: dict = {}
 HEADERS: dict = {}
@@ -84,7 +86,7 @@ def check_requirements(req_file: str = "requirements.txt") -> bool:
     """
     req_path = Path(req_file)
     if not req_path.exists():
-        print(f"Warning: {req_file} not found, skipping dependency check")
+        log(f"Warning: {req_file} not found, skipping dependency check")
         return True
 
     with open(req_path, encoding="utf-8") as f:
@@ -109,8 +111,8 @@ def check_requirements(req_file: str = "requirements.txt") -> bool:
             missing_packages.append(req)
 
     if missing_packages:
-        print("Missing or incompatible dependencies:")
+        log("Missing or incompatible dependencies:")
         for pkg in missing_packages:
-            print(f"  - {pkg}")
+            log(f"  - {pkg}")
         return False
     return True

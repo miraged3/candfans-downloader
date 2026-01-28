@@ -25,6 +25,7 @@ from config import (
 )
 from downloader import download_and_merge
 from .config_dialog import ConfigDialog
+from app_log import set_logger, log as app_log
 
 
 class DownloaderGUI(tk.Tk):
@@ -60,6 +61,7 @@ class DownloaderGUI(tk.Tk):
 
         # UI
         self._build_ui()
+        set_logger(self._log)
 
         self.auto_login()
 
@@ -297,8 +299,12 @@ class DownloaderGUI(tk.Tk):
                 if resp.get("data") and resp["data"].get("users"):
                     user = resp["data"]["users"][0]
                     username = "Current User: " + user.get("username", "")
+            except HTTPError as e:
+                # First launch without cookies is expected to return 401; keep quiet.
+                if e.response is None or e.response.status_code != 401:
+                    app_log(e)
             except Exception as e:
-                print(e)
+                app_log(e)
 
             self.after(0, lambda: self.username_var.set(
                 username or "Not logged in"))
@@ -368,14 +374,14 @@ class DownloaderGUI(tk.Tk):
                     except HTTPError as e:
                         if e.response is not None and e.response.status_code == 401:
                             continue
-                        print(e)
+                        app_log(e)
             finally:
                 # Reset login state on exit to allow logging in again
                 self._logging_in = False
                 try:
                     window.destroy()
                 except Exception as e:
-                    print(e)
+                    app_log(e)
 
         window = webview.create_window(
             "CandFans Login", "https://candfans.jp/auth/login")

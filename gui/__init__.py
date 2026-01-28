@@ -7,6 +7,7 @@ import ctypes
 from .main import DownloaderGUI
 from .config_dialog import ConfigDialog
 from config import check_requirements, load_config
+from app_log import show_error, log
 
 __all__ = ["DownloaderGUI", "ConfigDialog", "main"]
 
@@ -16,7 +17,9 @@ def main() -> None:
     try:
         load_config()
     except yaml.YAMLError as e:
-        print(f"Invalid configuration file format: {e}")
+        msg = f"Invalid configuration file format: {e}"
+        show_error(msg, title="Config Error")
+        log(msg)
         sys.exit(1)
 
     # if not check_requirements():
@@ -35,4 +38,3 @@ def main() -> None:
 
     app = DownloaderGUI()
     app.mainloop()
-
