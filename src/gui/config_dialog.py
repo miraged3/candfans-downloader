@@ -5,7 +5,7 @@ from tkinter import ttk, messagebox, filedialog
 
 
 class ConfigDialog(tk.Toplevel):
-    """Dialog for editing ``config.yaml``."""
+    """Dialog for editing ``config/config.yaml``."""
 
     def __init__(self, parent, cfg_obj: dict, on_save):
         super().__init__(parent)

@@ -8,10 +8,10 @@ from urllib.parse import urljoin
 import requests
 from tqdm import tqdm
 
-from network import safe_get
-from config import HEADERS
-from api import get_purchased_contents, parse_purchased_contents
-from app_log import log as app_log
+from .network import safe_get
+from .config import HEADERS
+from .api import get_purchased_contents, parse_purchased_contents
+from .app_log import log as app_log
 
 ffmpeg_path = shutil.which("ffmpeg")
 if ffmpeg_path is None:

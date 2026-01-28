@@ -1,5 +1,5 @@
-from network import safe_get
-from config import HEADERS, cfg
+from .network import safe_get
+from .config import HEADERS, cfg
 
 
 def get_subscription_list():

@@ -4,20 +4,28 @@ from pathlib import Path
 
 import yaml
 
-from app_log import log
+from .app_log import log
 
 # Global configuration and headers
 cfg: dict = {}
 HEADERS: dict = {}
 
 
-def load_config(path: str = "config.yaml") -> dict:
+def _default_config_path() -> Path:
+    """Return the default config.yaml location."""
+    return Path(__file__).resolve().parents[2] / "config.yaml"
+
+
+def load_config(path: str | None = None) -> dict:
     """Load configuration from *path* and refresh HEADERS.
 
     If *path* does not exist a new configuration file is created automatically
     using ``config_demo.yaml`` as a template (falling back to a minimal built-in
     default when the demo file is missing).
     """
+
+    if path is None:
+        path = str(_default_config_path())
 
     cfg_path = Path(path)
     if not cfg_path.exists():
@@ -48,7 +56,7 @@ def load_config(path: str = "config.yaml") -> dict:
                 },
                 "cookie": "",
             }
-        save_config(data, path)
+        save_config(data, str(_default_config_path()))
         return cfg
 
     with open(cfg_path, "r", encoding="utf-8") as f:
@@ -60,9 +68,13 @@ def load_config(path: str = "config.yaml") -> dict:
     return cfg
 
 
-def save_config(config: dict, path: str = "config.yaml") -> None:
+def save_config(config: dict, path: str | None = None) -> None:
     """Persist *config* to *path* and refresh HEADERS."""
-    with open(path, "w", encoding="utf-8") as f:
+    if path is None:
+        path = str(_default_config_path())
+    out_path = Path(path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(config, f, allow_unicode=True, sort_keys=False)
     cfg.clear()
     cfg.update(config)

@@ -9,7 +9,7 @@ from tkinter import ttk, messagebox
 
 from requests import HTTPError
 
-from api import (
+from core.api import (
     get_subscription_list,
     parse_subscription_list,
     get_timeline,
@@ -18,14 +18,14 @@ from api import (
     get_purchased_contents,
     parse_purchased_contents,
 )
-from config import (
+from core.config import (
     cfg,
     save_config,
     HEADERS,
 )
-from downloader import download_and_merge
+from core.downloader import download_and_merge
 from .config_dialog import ConfigDialog
-from app_log import set_logger, log as app_log
+from core.app_log import set_logger, log as app_log
 
 
 class DownloaderGUI(tk.Tk):
@@ -397,7 +397,7 @@ class DownloaderGUI(tk.Tk):
 
     def on_config_saved(self, new_cfg: dict):
         """Update configuration after dialog save and persist to disk"""
-        save_config(new_cfg)  # write back config.yaml and refresh header
+        save_config(new_cfg)  # write back config/config.yaml and refresh header
         self._log("[Config] Saved and applied.")
 
     # ---------- Purchased Contents Events ----------
@@ -505,7 +505,7 @@ class DownloaderGUI(tk.Tk):
 
     def _download_purchased_worker(self, tasks):
         """Worker thread for downloading purchased contents."""
-        from downloader import download_and_merge, sanitize_filename
+        from core.downloader import download_and_merge, sanitize_filename
 
         for i, content in enumerate(tasks):
             if self.cancel_event.is_set():

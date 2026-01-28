@@ -1,4 +1,4 @@
-English | [中文](README_zh.md)
+English | [中文](docs/README_zh.md)
 
 # CandFans Downloader
 
@@ -37,7 +37,7 @@ Running the program for the first time creates `config.yaml`. You can also open 
 
 ### Main GUI
 
-1. Start the program: `python main.py`
+1. Start the program: `PYTHONPATH=src python -m main`
 2. Click the login button and sign in to your CandFans account.
 3. After logging in, choose between two tabs:
 
@@ -62,8 +62,8 @@ If automatic login fails, you can obtain the values manually:
 3. Find the `get-user-mine` request, right-click and choose **Copy as cURL**.
 4. Extract `x-xsrf-token` and the cookie string from the command and paste them into the configuration, then click fetch posts.
 
-![Token location](doc/image1.png)
-![Cookie location](doc/image2.png)
+![Token location](docs/image1.png)
+![Cookie location](docs/image2.png)
 
 ## High DPI support
 

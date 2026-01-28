@@ -6,8 +6,8 @@ import ctypes
 
 from .main import DownloaderGUI
 from .config_dialog import ConfigDialog
-from config import check_requirements, load_config
-from app_log import show_error, log
+from core.config import check_requirements, load_config
+from core.app_log import show_error, log
 
 __all__ = ["DownloaderGUI", "ConfigDialog", "main"]
 
