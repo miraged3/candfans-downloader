@@ -4,40 +4,17 @@ English | [中文](docs/README_zh.md)
 
 CandFans Downloader is a Python application for archiving content from your [candfans.jp](https://candfans.jp/) subscriptions. It provides a desktop GUI to log into your account, fetch posts from subscribed creators, and save video files locally.
 
-## Configuration
-
-Running the program for the first time creates `config.yaml`. You can also open **Config** in the GUI to fill in:
-
-| Field | Description |
-|-------|-------------|
-| `Base Url`      | API endpoint for the subscription list |
-| `Get Users Url` | API endpoint to get user info by code |
-| `Timeline Url`  | API endpoint for timeline posts |
-| `Token`         | XSRF token from CandFans |
-| `Cookie`        | Login cookie |
-| `Download Path` | Folder where files are saved |
-
-### Config file location
-
-- Windows: `%APPDATA%\candfans-downloader\config.yaml`
-- macOS: `~/Library/Application Support/candfans-downloader/config.yaml`
-- Linux: `~/.config/candfans-downloader/config.yaml` (or `$XDG_CONFIG_HOME/candfans-downloader/config.yaml`)
-- Source run: `<project-root>/config.yaml`
-
-### Prerequisite
-
-- `ffmpeg` must be installed and available in your system `PATH`.
-
 ## Usage
 
 ### Getting Started
 
-1. Open the latest release page and download the attachment for your OS.
+1. Install `ffmpeg` and ensure it is available in your system `PATH`.
+2. Open the latest release page and download the attachment for your OS.
    - Releases: https://github.com/miraged3/candfans-downloader/releases
-2. If you are on Windows, run the downloaded `.exe` directly.
-3. If you are on macOS/Linux, extract the downloaded file and run the executable.
-4. Click the login button and sign in to your CandFans account.
-5. After logging in, choose between two tabs:
+3. If you are on Windows, run the downloaded `.exe` directly.
+4. If you are on macOS/Linux, extract the downloaded file and run the executable.
+5. Click the login button and sign in to your CandFans account.
+6. After logging in, choose between two tabs:
 
 #### Release attachment names
 
@@ -80,6 +57,21 @@ If automatic login fails, you can obtain the values manually:
 - **Filtering Options**: Filter content by keyword, month, and file type
 - **Progress Tracking**: Real-time download progress with pause/resume functionality
 - **Automatic Organization**: Content is organized by creator and post ID
+
+## Advanced Configuration
+
+`ffmpeg` must be installed and available in your system `PATH`.
+
+Running the program for the first time creates `config.yaml`. You can also open **Config** in the GUI to fill in:
+
+| Field | Description |
+|-------|-------------|
+| `Base Url`      | API endpoint for the subscription list |
+| `Get Users Url` | API endpoint to get user info by code |
+| `Timeline Url`  | API endpoint for timeline posts |
+| `Token`         | XSRF token from CandFans |
+| `Cookie`        | Login cookie |
+| `Download Path` | Folder where files are saved |
 
 ---
 
