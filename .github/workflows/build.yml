@@ -26,11 +26,11 @@ jobs:
             package_ext: tar.gz
           - platform: macOS
             arch: x64
-            runner: macos-13
+            runner: macos-15-intel
             package_ext: tar.gz
           - platform: macOS
             arch: arm64
-            runner: macos-14
+            runner: macos-15
             package_ext: tar.gz
           - platform: Windows
             arch: x64
