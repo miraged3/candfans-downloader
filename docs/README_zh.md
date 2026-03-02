@@ -5,25 +5,9 @@
 CandFans Downloader 是一个用于从你的 [candfans.jp](https://candfans.jp/) 订阅中归档内容的 Python
 应用程序。它提供桌面图形界面，登录你的账户，获取已订阅创作者的帖子，并将视频文件保存到本地。
 
-## 运行环境
-
-- Python 3.8+
-- `requirements.txt` 中的依赖
-- `PATH` 中可用的 [FFmpeg](https://ffmpeg.org/)
-
-## 安装
-
-```bash
-git clone https://github.com/miraged3/candfans-downloader
-cd candfans-downloader
-pip install -r requirements.txt
-```
-
-使用前请确保已安装 `ffmpeg` 并配置到 `PATH`
-
 ## 配置
 
-程序首次运行会生成 `config.yaml`。也在 GUI 中打开 **Config** 来填写：
+程序首次运行会生成 `config.yaml`。也可以在 GUI 中打开 **Config** 来填写：
 
 | 字段              | 说明                     |
 |-----------------|------------------------|
@@ -41,11 +25,16 @@ pip install -r requirements.txt
 - Linux：`~/.config/candfans-downloader/config.yaml`（或 `$XDG_CONFIG_HOME/candfans-downloader/config.yaml`）
 - 源码运行：`<项目根目录>/config.yaml`
 
+### 前置条件
+
+- 需要安装 `ffmpeg`，并确保在系统 `PATH` 中可用。
+
 ## 使用方法
 
 ### 快速开始
 
 1. 打开最新 Release 页面，下载对应系统的附件。
+   - Releases：https://github.com/miraged3/candfans-downloader/releases
 2. Windows 用户可直接运行下载的 `.exe`。
 3. macOS/Linux 用户先解压下载文件，再运行可执行文件。
 4. 点击登录按钮，登录 CandFans 账号。
