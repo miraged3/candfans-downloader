@@ -4,8 +4,6 @@ import sys
 import yaml
 import ctypes
 
-from .main import DownloaderGUI
-from .config_dialog import ConfigDialog
 from core.config import check_requirements, load_config
 from core.app_log import show_error, log
 
@@ -14,6 +12,8 @@ __all__ = ["DownloaderGUI", "ConfigDialog", "main"]
 
 def main() -> None:
     """Load configuration, verify requirements and launch the GUI."""
+    from .main import DownloaderGUI
+
     try:
         load_config()
     except yaml.YAMLError as e:
@@ -38,3 +38,13 @@ def main() -> None:
 
     app = DownloaderGUI()
     app.mainloop()
+
+
+def __getattr__(name):
+    if name == "DownloaderGUI":
+        from .main import DownloaderGUI
+        return DownloaderGUI
+    if name == "ConfigDialog":
+        from .config_dialog import ConfigDialog
+        return ConfigDialog
+    raise AttributeError(name)

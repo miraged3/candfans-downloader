@@ -1,0 +1,134 @@
+name: Build Executables
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build (${{ matrix.platform }}-${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            arch: x64
+            runner: ubuntu-latest
+            package_ext: tar.gz
+          - platform: Linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            package_ext: tar.gz
+          - platform: macOS
+            arch: x64
+            runner: macos-13
+            package_ext: tar.gz
+          - platform: macOS
+            arch: arm64
+            runner: macos-14
+            package_ext: tar.gz
+          - platform: Windows
+            arch: x64
+            runner: windows-latest
+            package_ext: zip
+          - platform: Windows
+            arch: arm64
+            runner: windows-11-arm
+            package_ext: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set build version (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Set build version (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like "refs/tags/v*") {
+            $version = $env:GITHUB_REF_NAME
+          } else {
+            $version = "dev-$($env:GITHUB_SHA.Substring(0,7))"
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --clean --windowed --name candfans-downloader-${{ env.VERSION }} --paths src --collect-all webview src/gui/__main__.py
+
+      - name: Package artifact (Linux/macOS)
+        if: matrix.package_ext == 'tar.gz'
+        run: |
+          cd dist
+          tar -czf candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz candfans-downloader-${{ env.VERSION }}*
+
+      - name: Package artifact (Windows)
+        if: matrix.package_ext == 'zip'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\candfans-downloader-${{ env.VERSION }}* -DestinationPath dist\candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+
+      - name: Upload build artifact (Linux/macOS)
+        if: matrix.package_ext == 'tar.gz'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+
+      - name: Upload build artifact (Windows)
+        if: matrix.package_ext == 'zip'
+        uses: actions/upload-artifact@v4
+        with:
+          name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+
+  release:
+    name: Publish Release Assets
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/**/*.zip
+            release-assets/**/*.tar.gz

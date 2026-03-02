@@ -35,11 +35,22 @@ Running the program for the first time creates `config.yaml`. You can also open 
 
 ## Usage
 
-### Main GUI
+### Getting Started
 
-1. Start the program: `PYTHONPATH=src python -m main`
-2. Click the login button and sign in to your CandFans account.
-3. After logging in, choose between two tabs:
+1. Open the latest release page and download the attachment for your OS.
+2. Extract the downloaded file.
+3. Run the executable in the extracted folder.
+4. Click the login button and sign in to your CandFans account.
+5. After logging in, choose between two tabs:
+
+#### Release attachment names
+
+- Windows x64: `candfans-downloader-vX.Y.Z-Windows-x64.zip`
+- Windows arm64: `candfans-downloader-vX.Y.Z-Windows-arm64.zip`
+- macOS x64: `candfans-downloader-vX.Y.Z-macOS-x64.tar.gz`
+- macOS arm64: `candfans-downloader-vX.Y.Z-macOS-arm64.tar.gz`
+- Linux x64: `candfans-downloader-vX.Y.Z-Linux-x64.tar.gz`
+- Linux arm64: `candfans-downloader-vX.Y.Z-Linux-arm64.tar.gz`
 
 #### Subscription Timeline Tab
 
@@ -65,10 +76,6 @@ If automatic login fails, you can obtain the values manually:
 ![Token location](docs/images/image1.png)
 ![Cookie location](docs/images/image2.png)
 
-## High DPI support
-
-The GUI is per-monitor DPI aware on Windows, rendering crisply at 125%, 150% or 200% scaling. On older versions of Windows that lack `SetProcessDpiAwareness` or `SetProcessDPIAware`, the interface may not scale correctly and could appear blurry.
-
 ## Features
 
 - **Subscription Timeline Downloads**: Download content from your subscribed creators
@@ -77,11 +84,6 @@ The GUI is per-monitor DPI aware on Windows, rendering crisply at 125%, 150% or 
 - **Filtering Options**: Filter content by keyword, month, and file type
 - **Progress Tracking**: Real-time download progress with pause/resume functionality
 - **Automatic Organization**: Content is organized by creator and post ID
-
-## Future plans
-
-- Package into a standalone executable
-- Language switching
 
 ---
 

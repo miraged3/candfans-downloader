@@ -36,11 +36,22 @@ pip install -r requirements.txt
 
 ## 使用方法
 
-### GUI 模式
+### 快速开始
 
-1. 启动程序，在终端中执行：`PYTHONPATH=src python -m main`
-2. 点击登录按钮，登录CandFans账号
-3. 登录成功之后，可以选择两个标签页：
+1. 打开最新 Release 页面，下载对应系统的附件。
+2. 解压下载的压缩包。
+3. 在解压目录中运行可执行文件。
+4. 点击登录按钮，登录 CandFans 账号。
+5. 登录成功之后，可以选择两个标签页：
+
+#### Release 附件命名
+
+- Windows x64：`candfans-downloader-vX.Y.Z-Windows-x64.zip`
+- Windows arm64：`candfans-downloader-vX.Y.Z-Windows-arm64.zip`
+- macOS x64：`candfans-downloader-vX.Y.Z-macOS-x64.tar.gz`
+- macOS arm64：`candfans-downloader-vX.Y.Z-macOS-arm64.tar.gz`
+- Linux x64：`candfans-downloader-vX.Y.Z-Linux-x64.tar.gz`
+- Linux arm64：`candfans-downloader-vX.Y.Z-Linux-arm64.tar.gz`
 
 #### 订阅时间线标签页
 
@@ -74,12 +85,6 @@ pip install -r requirements.txt
 - **过滤选项**：按关键词、月份和文件类型过滤内容
 - **进度跟踪**：实时下载进度，支持暂停/恢复功能
 - **自动组织**：内容按创作者和帖子ID自动组织
-
-## 未来计划
-
-- 打包成独立程序
-- 语言切换
-- 更多过滤选项
 
 ---
 
