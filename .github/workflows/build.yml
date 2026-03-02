@@ -35,11 +35,11 @@ jobs:
           - platform: Windows
             arch: x64
             runner: windows-latest
-            package_ext: zip
+            package_ext: exe
           - platform: Windows
             arch: arm64
             runner: windows-11-arm
-            package_ext: zip
+            package_ext: exe
 
     steps:
       - name: Checkout
@@ -84,19 +84,20 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --noconfirm --clean --windowed --name candfans-downloader-${{ env.VERSION }} --paths src --collect-all webview src/gui/__main__.py
+          pyinstaller --noconfirm --clean --windowed --onefile --name candfans-downloader-${{ env.VERSION }} --paths src --collect-all webview src/gui/__main__.py
 
       - name: Package artifact (Linux/macOS)
         if: matrix.package_ext == 'tar.gz'
         run: |
           cd dist
-          tar -czf candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz candfans-downloader-${{ env.VERSION }}*
+          mv candfans-downloader-${{ env.VERSION }} candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
+          tar -czf candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
 
-      - name: Package artifact (Windows)
-        if: matrix.package_ext == 'zip'
+      - name: Prepare artifact (Windows exe)
+        if: matrix.package_ext == 'exe'
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\candfans-downloader-${{ env.VERSION }}* -DestinationPath dist\candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          Rename-Item -Path dist\candfans-downloader-${{ env.VERSION }}.exe -NewName candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.exe
 
       - name: Upload build artifact (Linux/macOS)
         if: matrix.package_ext == 'tar.gz'
@@ -105,12 +106,12 @@ jobs:
           name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
 
-      - name: Upload build artifact (Windows)
-        if: matrix.package_ext == 'zip'
+      - name: Upload build artifact (Windows exe)
+        if: matrix.package_ext == 'exe'
         uses: actions/upload-artifact@v4
         with:
           name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
-          path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.zip
+          path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.exe
 
   release:
     name: Publish Release Assets
@@ -130,5 +131,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-assets/**/*.zip
+            release-assets/**/*.exe
             release-assets/**/*.tar.gz

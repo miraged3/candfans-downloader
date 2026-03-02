@@ -1,4 +1,6 @@
 import copy
+import os
+import sys
 from importlib import metadata
 from pathlib import Path
 
@@ -13,6 +15,14 @@ HEADERS: dict = {}
 
 def _default_config_path() -> Path:
     """Return the default config.yaml location."""
+    if getattr(sys, "frozen", False):
+        if sys.platform == "win32":
+            base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
+        elif sys.platform == "darwin":
+            base = Path.home() / "Library" / "Application Support"
+        else:
+            base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+        return base / "candfans-downloader" / "config.yaml"
     return Path(__file__).resolve().parents[2] / "config.yaml"
 
 

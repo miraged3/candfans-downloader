@@ -3,3 +3,6 @@ config.yaml
 downloads
 .venv
 __pycache__
+dist
+build
+candfans-downloader-local.spec

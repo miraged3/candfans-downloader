@@ -33,20 +33,27 @@ Running the program for the first time creates `config.yaml`. You can also open 
 | `Cookie`        | Login cookie |
 | `Download Path` | Folder where files are saved |
 
+### Config file location
+
+- Windows: `%APPDATA%\candfans-downloader\config.yaml`
+- macOS: `~/Library/Application Support/candfans-downloader/config.yaml`
+- Linux: `~/.config/candfans-downloader/config.yaml` (or `$XDG_CONFIG_HOME/candfans-downloader/config.yaml`)
+- Source run: `<project-root>/config.yaml`
+
 ## Usage
 
 ### Getting Started
 
 1. Open the latest release page and download the attachment for your OS.
-2. Extract the downloaded file.
-3. Run the executable in the extracted folder.
+2. If you are on Windows, run the downloaded `.exe` directly.
+3. If you are on macOS/Linux, extract the downloaded file and run the executable.
 4. Click the login button and sign in to your CandFans account.
 5. After logging in, choose between two tabs:
 
 #### Release attachment names
 
-- Windows x64: `candfans-downloader-vX.Y.Z-Windows-x64.zip`
-- Windows arm64: `candfans-downloader-vX.Y.Z-Windows-arm64.zip`
+- Windows x64: `candfans-downloader-vX.Y.Z-Windows-x64.exe`
+- Windows arm64: `candfans-downloader-vX.Y.Z-Windows-arm64.exe`
 - macOS x64: `candfans-downloader-vX.Y.Z-macOS-x64.tar.gz`
 - macOS arm64: `candfans-downloader-vX.Y.Z-macOS-arm64.tar.gz`
 - Linux x64: `candfans-downloader-vX.Y.Z-Linux-x64.tar.gz`

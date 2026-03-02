@@ -34,20 +34,27 @@ pip install -r requirements.txt
 | `Cookie`        | 登录 Cookie              |
 | `Download Path` | 保存文件的文件夹               |
 
+### 配置文件位置
+
+- Windows：`%APPDATA%\candfans-downloader\config.yaml`
+- macOS：`~/Library/Application Support/candfans-downloader/config.yaml`
+- Linux：`~/.config/candfans-downloader/config.yaml`（或 `$XDG_CONFIG_HOME/candfans-downloader/config.yaml`）
+- 源码运行：`<项目根目录>/config.yaml`
+
 ## 使用方法
 
 ### 快速开始
 
 1. 打开最新 Release 页面，下载对应系统的附件。
-2. 解压下载的压缩包。
-3. 在解压目录中运行可执行文件。
+2. Windows 用户可直接运行下载的 `.exe`。
+3. macOS/Linux 用户先解压下载文件，再运行可执行文件。
 4. 点击登录按钮，登录 CandFans 账号。
 5. 登录成功之后，可以选择两个标签页：
 
 #### Release 附件命名
 
-- Windows x64：`candfans-downloader-vX.Y.Z-Windows-x64.zip`
-- Windows arm64：`candfans-downloader-vX.Y.Z-Windows-arm64.zip`
+- Windows x64：`candfans-downloader-vX.Y.Z-Windows-x64.exe`
+- Windows arm64：`candfans-downloader-vX.Y.Z-Windows-arm64.exe`
 - macOS x64：`candfans-downloader-vX.Y.Z-macOS-x64.tar.gz`
 - macOS arm64：`candfans-downloader-vX.Y.Z-macOS-arm64.tar.gz`
 - Linux x64：`candfans-downloader-vX.Y.Z-Linux-x64.tar.gz`
