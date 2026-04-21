@@ -23,7 +23,7 @@ from core.config import (
     save_config,
     HEADERS,
 )
-from core.downloader import download_and_merge
+from core.downloader import download_and_merge, infer_url_type, sanitize_filename
 from .config_dialog import ConfigDialog
 from core.app_log import set_logger, log as app_log
 
@@ -549,7 +549,7 @@ class DownloaderGUI(tk.Tk):
                         self.after(0, self._update_progress,
                                    int(progress * 1000), 1000)
 
-                    url_type = "m3u8" if url.endswith(".m3u8") else "mp4"
+                    url_type = infer_url_type(url)
 
                     download_and_merge(
                         url,
@@ -648,8 +648,7 @@ class DownloaderGUI(tk.Tk):
                         if keyword and keyword not in post.get("title", ""):
                             continue
                         for url in urls:
-                            url_type = "m3u8" if url.endswith(
-                                ".m3u8") else "mp4"
+                            url_type = infer_url_type(url)
                             self.posts.append((acc, post, url_type, url))
                 self._log(f"Finished fetching, {len(self.posts)} items")
             except Exception as e:
@@ -734,7 +733,7 @@ class DownloaderGUI(tk.Tk):
             post_id = str(post.get("post_id"))
             for url in urls:
                 self.after(0, self._reset_progress)
-                if url.endswith(".m3u8"):
+                if infer_url_type(url) == "m3u8":
                     self._download_m3u8(url, acc, title, post_id)
                 else:
                     self._download_mp4(url, acc, title, post_id)
@@ -754,8 +753,10 @@ class DownloaderGUI(tk.Tk):
             download_and_merge(
                 url,
                 os.path.join(cfg.get("download_dir") or "downloads",
-                             acc["username"], id + "-" + title),
-                title,
+                             sanitize_filename(acc["username"]),
+                             f"{id}-{sanitize_filename(title)}"),
+                sanitize_filename(title),
+                url_type="mp4",
                 progress_cb=progress_cb,
             )
             self._log("    Done")
@@ -771,8 +772,10 @@ class DownloaderGUI(tk.Tk):
             download_and_merge(
                 url,
                 os.path.join(cfg.get("download_dir") or "downloads",
-                             acc["username"], id + "-" + title),
-                title,
+                             sanitize_filename(acc["username"]),
+                             f"{id}-{sanitize_filename(title)}"),
+                sanitize_filename(title),
+                url_type="m3u8",
                 progress_cb=progress_cb,
             )
             self._log("    Done")

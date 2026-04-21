@@ -3,7 +3,7 @@ import re
 import shutil
 import subprocess
 import time
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from tqdm import tqdm
@@ -19,13 +19,32 @@ if ffmpeg_path is None:
         "ffmpeg not found. Please install ffmpeg and ensure it is in the system PATH.")
 
 
-def sanitize_filename(filename: str) -> str:
-    """Replace characters invalid on most filesystems."""
-    # Replace invalid characters with underscore
-    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-    # Remove leading/trailing whitespace and dots
+def sanitize_filename(filename: str, max_length: int = 100) -> str:
+    """Return a Windows-safe filename component."""
+    filename = str(filename or "")
+    filename = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
     filename = filename.strip(' .')
-    return filename
+    if not filename:
+        filename = "untitled"
+
+    stem = filename.split(".", 1)[0].upper()
+    reserved_names = {
+        "CON", "PRN", "AUX", "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }
+    if stem in reserved_names:
+        filename = f"_{filename}"
+
+    if max_length and len(filename) > max_length:
+        filename = filename[:max_length].rstrip(' .')
+    return filename or "untitled"
+
+
+def infer_url_type(file_url: str) -> str:
+    """Infer supported media type from URL path, ignoring query strings."""
+    path = urlparse(file_url).path.lower()
+    return "m3u8" if path.endswith(".m3u8") else "mp4"
 
 
 def ensure_dir(path: str) -> None:
@@ -74,7 +93,7 @@ def download_and_merge(
         file_url: str,
         target_dir: str,
         output_name: str,
-        url_type: str = "m3u8",
+        url_type: str | None = None,
         log=None,
         pause_event=None,
         cancel_event=None,
@@ -118,6 +137,9 @@ def download_and_merge(
 
     def _should_cancel():
         return cancel_event is not None and cancel_event.is_set()
+
+    output_name = sanitize_filename(output_name)
+    url_type = url_type or infer_url_type(file_url)
 
     def _check_cancel_or_pause():
         if _should_cancel():
@@ -170,7 +192,7 @@ def download_and_merge(
     r = safe_get(file_url, headers=HEADERS)
     r.raise_for_status()
     m3u8_text = r.text
-    m3u8_filename = os.path.join(target_dir, os.path.basename(file_url))
+    m3u8_filename = os.path.join(target_dir, "playlist.m3u8")
     with open(m3u8_filename, "w", encoding="utf-8") as f:
         f.write(m3u8_text)
 
@@ -448,7 +470,7 @@ def download_purchased_contents(
                 continue
 
             # Determine file type
-            if url.endswith(".m3u8"):
+            if infer_url_type(url) == "m3u8":
                 url_type = "m3u8"
                 file_ext = "mp4"  # m3u8 will be converted to mp4
             else:
