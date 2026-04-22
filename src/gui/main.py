@@ -731,10 +731,12 @@ class DownloaderGUI(tk.Tk):
             medias = post.get("attachments", [])
             urls = [m.get("default") for m in medias if m.get("default")]
             post_id = str(post.get("post_id"))
-            for url in urls:
+            for i, url in enumerate(urls, start=1):
                 self.after(0, self._reset_progress)
                 if infer_url_type(url) == "m3u8":
                     self._download_m3u8(url, acc, title, post_id)
+                elif infer_url_type(url) == "jpg":
+                    self._download_jpg(url, acc, title, post_id, i, len(urls))
                 else:
                     self._download_mp4(url, acc, title, post_id)
 
@@ -757,6 +759,28 @@ class DownloaderGUI(tk.Tk):
                              f"{id}-{sanitize_filename(title)}"),
                 sanitize_filename(title),
                 url_type="mp4",
+                progress_cb=progress_cb,
+            )
+            self._log("    Done")
+        except Exception as e:
+            self._log(f"    [Failed] {e}")
+
+    def _download_jpg(self, url, acc, title, id, index, length):
+        # Standard jpg download
+        try:
+            def progress_cb(current, total):
+                self.after(0, self._update_progress, current, total)
+
+            file_name = sanitize_filename(title)
+            file_name = f"{file_name}_{index}" if length > 1 else file_name
+
+            download_and_merge(
+                url,
+                os.path.join(cfg.get("download_dir") or "downloads",
+                             sanitize_filename(acc["username"]),
+                             f"{id}-{sanitize_filename(title)}"),
+                file_name,
+                url_type="jpg",
                 progress_cb=progress_cb,
             )
             self._log("    Done")

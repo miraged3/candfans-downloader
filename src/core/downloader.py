@@ -44,7 +44,7 @@ def sanitize_filename(filename: str, max_length: int = 100) -> str:
 def infer_url_type(file_url: str) -> str:
     """Infer supported media type from URL path, ignoring query strings."""
     path = urlparse(file_url).path.lower()
-    return "m3u8" if path.endswith(".m3u8") else "mp4"
+    return "m3u8" if path.endswith(".m3u8") else "jpg" if path.endswith(".jpg") or path.endswith(".jpeg") else "mp4"
 
 
 def ensure_dir(path: str) -> None:
@@ -111,7 +111,7 @@ def download_and_merge(
     output_name: str
         Name of the resulting mp4 file.
     url_type: str
-        Either "m3u8" or "mp4".
+        Either "m3u8", "jpg" or "mp4".
     log: callable, optional
         Logging function; defaults to ``print`` when omitted.
     pause_event: threading.Event, optional
@@ -149,10 +149,10 @@ def download_and_merge(
 
     ensure_dir(target_dir)
 
-    # ---- direct mp4 ----
-    if url_type == "mp4":
-        output_path = os.path.join(target_dir, output_name + ".mp4")
-        _log(f"[Download MP4] {output_path}")
+    # ---- direct mp4 or jpg ----
+    if url_type == "mp4" or url_type == "jpg":
+        output_path = os.path.join(target_dir, output_name + f".{url_type}")
+        _log(f"[Download {url_type.upper()}] {output_path}")
         resp = safe_get(file_url, headers=HEADERS, stream=True)
         resp.raise_for_status()
         total_size = int(resp.headers.get("content-length", 0)) or None
@@ -162,7 +162,7 @@ def download_and_merge(
                 with tqdm(total=total_size or 0, unit="B", unit_scale=True, desc=output_name) as pbar:
                     for chunk in resp.iter_content(1024 * 1024):
                         if _should_cancel():
-                            _log("[Cancelled] User cancelled (mp4).")
+                            _log(f"[Cancelled] User cancelled ({url_type}).")
                             raise RuntimeError("Cancelled")
                         _wait_if_paused()
                         if chunk:
@@ -172,7 +172,7 @@ def download_and_merge(
             else:
                 for chunk in resp.iter_content(1024 * 1024):
                     if _should_cancel():
-                        _log("[Cancelled] User cancelled (mp4).")
+                        _log(f"[Cancelled] User cancelled ({url_type}).")
                         raise RuntimeError("Cancelled")
                     _wait_if_paused()
                     if chunk:
