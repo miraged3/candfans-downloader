@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set build version (Linux/macOS)
         if: runner.os != 'Windows'
@@ -67,7 +67,7 @@ jobs:
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -101,14 +101,14 @@ jobs:
 
       - name: Upload build artifact (Linux/macOS)
         if: matrix.package_ext == 'tar.gz'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
 
       - name: Upload build artifact (Windows exe)
         if: matrix.package_ext == 'exe'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}
           path: dist/candfans-downloader-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.arch }}.exe
@@ -123,7 +123,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: release-assets
 
